@@ -1,7 +1,8 @@
 from django.urls import path
-from . import views
+from .views import TemplateUpdateAPIView ,getTemplate,getTemplates
 
 urlpatterns = [
-    path('getTemplate/', views.getTemplates, name="gettemplates"),
-    path('getTemplate/<int:pk>/', views.getTemplate, name="gettemplate")
+    path('getTemplate/',getTemplates, name="gettemplates"),
+    path('getTemplate/<int:pk>/', getTemplate, name="gettemplate"),
+    path('<int:pk>/',TemplateUpdateAPIView.as_view(), name="update-template")
 ]

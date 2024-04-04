@@ -5,6 +5,8 @@ from .models import Template, Page, PageContent
 from .serializer import TemplateSerializer, PageContentSerializer, PageSerializer
 from rest_framework import status
 # Create your views here.
+from rest_framework.generics import RetrieveUpdateDestroyAPIView
+from rest_framework import status
 
 @api_view(['GET'])
 def getTemplates(request):

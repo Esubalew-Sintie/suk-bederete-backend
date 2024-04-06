@@ -1,5 +1,5 @@
 from rest_framework.serializers import ModelSerializer
-from .models import Template, Page, PageContent
+from .models import Template, Page
 
 class TemplateSerializer(ModelSerializer):
     class Meta:
@@ -11,7 +11,3 @@ class PageSerializer(ModelSerializer):
         model= Page
         fields = '__all__' 
 
-class PageContentSerializer(ModelSerializer):
-    class Meta:
-        model= PageContent
-        fields = '__all__' 

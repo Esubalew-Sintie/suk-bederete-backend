@@ -1,8 +1,8 @@
 from django.shortcuts import render, get_object_or_404
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import Template, Page, PageContent
-from .serializer import TemplateSerializer, PageContentSerializer, PageSerializer
+from .models import Template, Page
+from .serializer import TemplateSerializer, PageSerializer
 from rest_framework import status
 # Create your views here.
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
@@ -40,24 +40,68 @@ def getTemplate(request, pk):
     return Response(serializer.data)
 
 @api_view(['PATCH'])
-def updatePageContent(request, pk):
+def updatePageContent(request, template_id, page_id):
     try:
-        template = PageContent.objects.get(pk=pk)
+        # Get the specific page related to the template_id and page_id
+        page = Page.objects.get(template_id=template_id, pk=page_id)
         
         if 'content' in request.data:
             content = request.data['content']
             if 'html' in content:
-                template.html = content['html']
+                page.html = content['html']
             if 'css' in content:
-                template.css = content['css']
+                page.css = content['css']
+            if 'js' in content:
+                page.js = content['js']
         
-        template.save()
+        page.save()
         
-        serializer = PageContentSerializer(template)
+        # You may customize the serializer according to your needs
+        serializer = PageSerializer(page)
         return Response(serializer.data)
+        
+        return Response({"success": "Page content updated successfully"})
     
-    except PageContent.DoesNotExist:
-        return Response({"error": "Template not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Page.DoesNotExist:
+        return Response({"error": "Page not found"}, status=status.HTTP_404_NOT_FOUND)
     
     except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@api_view(['GET'])
+def getePage(request, template_id, page_id):
+    try:
+        # Get the specific page related to the template_id and page_id
+        page = Page.objects.get(template_id=template_id, pk=page_id)
+        
+        # You may customize the serializer according to your needs
+        serializer = PageSerializer(page)
+        return Response(serializer.data)
+        
+        return Response({"success": "Page content updated successfully"})
+    
+    except Page.DoesNotExist:
+        return Response({"error": "Page not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+@api_view(['GET'])
+def getTemplatePage(request, template_id):
+    try:
+        # Retrieve the template object
+        template = get_object_or_404(Template, pk=template_id)
+        
+        # Retrieve all pages associated with the template
+        page = Page.objects.filter(template=template)
+    
+        serializer = PageSerializer(instance=page, many=True)
+        
+        
+        # Return the serialized data for all pages
+        return Response(serializer.data)
+    
+    except Exception as e:
+        # Handle exceptions
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

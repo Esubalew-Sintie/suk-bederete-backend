@@ -4,6 +4,8 @@ from . import views
 urlpatterns = [
     path('getTemplate/', views.getTemplates, name="gettemplates"),
     path('getTemplate/<int:pk>/', views.getTemplate, name="gettemplate"),
-    path('getTemplatePages/<int:pk>/', views.getTemplatePages, name="gettemplatepage"),
-    path('updatePageContent/<int:pk>/', views.updatePageContent, name="updateTemplate")
+    path('getTemplatePage/<int:pk>/', views.getTemplatePages, name="gettemplatepage"),
+    path('getTemplatePages/<int:template_id>/', views.getTemplatePage, name="gettemplatepage"),
+    path('getPage/<int:template_id>/<int:page_id>/', views.getePage, name="getepage"),
+    path('updatePageContent/<int:template_id>/<int:page_id>/', views.updatePageContent, name="updatePageContent")
 ]

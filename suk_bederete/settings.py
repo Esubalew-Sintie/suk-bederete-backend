@@ -42,6 +42,9 @@ INSTALLED_APPS = [
     'builder',
     'customer',
     'merchant',
+    'shop',
+    'category',
+    'store',
     'rest_framework',
     "corsheaders",
 

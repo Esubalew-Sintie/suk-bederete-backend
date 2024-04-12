@@ -5,35 +5,25 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 
 # Create your models here.
 class MyaccountManager(BaseUserManager):
-    def create_user(self, first_name, last_name, username, email, password=None):
+    def create_user(self, email, password=None, **extra_fields):
         if not email:
-            raise ValueError('user must have an email')
-        if not username:
-            raise ValueError('user must have an username')
-        user = self.model(
-            email = self.normalize_email(email),
-            first_name = first_name,
-            last_name = last_name,
-            username = username
-        )
+            raise ValueError('User must have an email')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
-    
-    def create_superuser(self, first_name,last_name,username,email,password):
-        user = self.create_user(
-            email=self.normalize_email(email),
-            first_name=first_name,
-            last_name=last_name,
-            username=username,
-            password=password
-        )
-        user.is_admin = True
-        user.is_active = True
-        user.is_staff = True
-        user.is_superadmin = True
-        user.save(using=self._db)
-        return user
+
+    def create_superuser(self, email, password, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superadmin', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superadmin') is not True:
+            raise ValueError('Superuser must have is_superadmin=True.')
+
+        return self.create_user(email, password, **extra_fields)
     
 class Account(AbstractBaseUser):
     first_name = models.CharField(max_length=50)
@@ -49,7 +39,6 @@ class Account(AbstractBaseUser):
     is_active = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
     objects = MyaccountManager()
 
     def __str__(self):

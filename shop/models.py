@@ -7,6 +7,7 @@ import uuid
 # Create your models here.
 class CustomizedTemplate(models.Model):
     original_template = models.ForeignKey(Template, on_delete=models.CASCADE)
+    modifiedby = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name='customized_templates', to_field='unique_id')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -24,7 +25,7 @@ class CustomizedPage(models.Model):
 
 class Shop(models.Model):
     name = models.CharField(max_length=200)
-    # owner = models.ForeignKey(Merchant, on_delete=models.CASCADE)
+    owner = models.ForeignKey(Merchant, on_delete=models.CASCADE, to_field='unique_id')
     customized_template = models.ForeignKey(CustomizedTemplate, on_delete=models.CASCADE)
     unique_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True) # Unique identifier for the shop
     created_date = models.DateTimeField(auto_now_add=True)

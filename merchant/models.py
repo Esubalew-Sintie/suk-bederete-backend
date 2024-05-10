@@ -1,8 +1,10 @@
 from django.db import models
 from account.models import Account
+import uuid
 # Create your models here.
 class Merchant(models.Model):
     user = models.OneToOneField(Account, on_delete=models.CASCADE)
+    unique_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, primary_key=True) 
     bank_account_number = models.CharField(max_length=20)
     has_physical_store = models.BooleanField(default=False)
     physical_shop_name = models.CharField(max_length=200, blank=True, null=True)

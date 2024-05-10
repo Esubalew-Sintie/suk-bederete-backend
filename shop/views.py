@@ -2,141 +2,138 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Shop, CustomizedTemplate, CustomizedPage
-from .serializer import ShopSerializer, CustomizedPageSerializer
-import logging
+from .serializer import ShopSerializer, CustomizedPageSerializer, CustomizedTemplateSerializer
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 from builder.models import Template
 from django.shortcuts import get_object_or_404
+from merchant.models import Merchant
+import logging
 logger = logging.getLogger(__name__)
 
 @api_view(['POST'])
 def save_customized_pages(request):
     try:
         if request.method == 'POST':
-            # Adjusted to match the payload key
-            template_id = request.data.get('template')
+            # Use the CustomizedTemplateSerializer to validate the input data
+            serializer = CustomizedTemplateSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            template = serializer.validated_data.get('original_template')
+            modifier = serializer.validated_data.get('modifiedby')
             modified_pages_data = request.data.get('modified_pages', {})
 
-            print(f"Received request: template_id={template_id}, modified_pages={modified_pages_data}")
+            print(f"Received request: template={template}, modified_pages={modified_pages_data}")
 
-            if not template_id:
+            if not template:
                 return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
 
             try:
-                original_template = Template.objects.get(id=template_id)
-                customized_template = CustomizedTemplate.objects.create(original_template=original_template)
-                customized_template.save()
-            except CustomizedTemplate.DoesNotExist:
-                return Response({"error": "Customized template not found"}, status=status.HTTP_404_NOT_FOUND)
+                with transaction.atomic():
+                    customized_template = CustomizedTemplate.objects.create(original_template=template, modifiedby=modifier)
+                    customized_template.save()
 
-            # Process modified pages
-            for page_name, page_data in modified_pages_data.items():
-                html = page_data.get('html')
-                css = page_data.get('css')
-                js = page_data.get('js', '') # Assuming JS is optional
+                    # Process modified pages
+                    for page_name, page_data in modified_pages_data.items():
+                        html = page_data.get('html')
+                        css = page_data.get('css')
+                        js = page_data.get('js', '') # Assuming JS is optional
 
-                if html and css:
-                    # Update or create a new customized page instance
-                    CustomizedPage.objects.update_or_create(
-                        customized_template=customized_template,
-                        name=page_name,
-                        defaults={'html': html, 'css': css, 'js': js}
-                    )
+                        print(f"Processing page: {page_name}, html={html}, css={css}, js={js}")
+
+                        if html and css:
+                            # Update or create a new customized page instance
+                            CustomizedPage.objects.update_or_create(
+                                customized_template=customized_template,
+                                name=page_name,
+                                defaults={'html': html, 'css': css, 'js': js}
+                            )
+            except ObjectDoesNotExist:
+                return Response({"error": "Template or Customized template not found"}, status=status.HTTP_404_NOT_FOUND)
 
             return Response({"message": "Customized pages saved successfully"}, status=status.HTTP_200_OK)
 
     except Exception as e:
         logger.exception("Error saving customized pages: %s", e)
         return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['GET'])
-def get_customizedTemplate(request, customised_TemplateId):
-    logger.info(f"Received request for CustomizedTemplate with ID: {customised_TemplateId}")
+    
+@api_view(['PATCH'])
+def update_customized_template(request, template_id):
     try:
-        customised_Template = CustomizedTemplate.objects.get(id=customised_TemplateId)
-    except CustomizedTemplate.DoesNotExist:
-        logger.error(f"No CustomizedTemplate found with ID: {customised_TemplateId}")
-        return Response({"error": "No CustomizedTemplate found with the given ID"}, status=status.HTTP_404_NOT_FOUND)
-
-    customised_pages = CustomizedPage.objects.filter(customized_template=customised_Template)
-    serializer = CustomizedPageSerializer(customised_pages, many=True)
-    return Response(serializer.data)
-
-
-@api_view(['GET'])
-def get_shop(request, shop_id):
-    try:
-        if request.method == 'GET':
-            shop = Shop.objects.get(id=shop_id)
-            serializer = ShopSerializer(shop)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-    except Shop.DoesNotExist:
-        return Response({"error": "Shop not found"}, status=status.HTTP_404_NOT_FOUND)
-
-    except Exception as e:
-        logger.exception("Error retrieving shop: %s", e)
-        return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
-@api_view(['PUT'])
-def update_shop(request, shop_id):
-    try:
-        if request.method == 'PUT':
-            shop = Shop.objects.get(id=shop_id)
-            name = request.data.get('name', shop.name)
-            template_id = request.data.get('template')
+        if request.method == 'PATCH':
             modified_pages_data = request.data.get('modified_pages', {})
 
-            print(f"Received request: shop_id={shop_id}, name={name}, template_id={template_id}, modified_pages={modified_pages_data}")
+            print(f"Received request: template_id={template_id}, modified_pages={modified_pages_data}")
 
-            if template_id:
-                try:
-                    template = Template.objects.get(id=template_id)
-                    customized_template = CustomizedTemplate.objects.create(original_template=template, name=name)
-                    shop.customized_template = customized_template
-                except Template.DoesNotExist:
-                    return Response({"error": "Template not found"}, status=status.HTTP_404_NOT_FOUND)
+            try:
+                customized_template = CustomizedTemplate.objects.get(id=template_id)
+                
+                with transaction.atomic():
+                    
 
-            shop.name = name
-            shop.save()
+                    # Process modified pages
+                    for page_name, page_data in modified_pages_data.items():
+                        html = page_data.get('html')
+                        css = page_data.get('css')
+                        js = page_data.get('js', '') # Assuming JS is optional
 
-            # Process modified pages
-            for page_name, page_data in modified_pages_data.items():
-                html = page_data.get('html')
-                css = page_data.get('css')
-                js = page_data.get('js', '') # Assuming JS is optional
+                        if html and css:
+                            # Update or create a new customized page instance
+                            CustomizedPage.objects.update_or_create(
+                                customized_template=customized_template,
+                                name=page_name,
+                                defaults={'html': html, 'css': css, 'js': js}
+                            )
 
-                if html and css:
-                    # Update or create a new customized page instance
-                    customized_page, created = CustomizedPage.objects.update_or_create(
-                        customized_template=shop.customized_template,
-                        name=page_name,
-                        defaults={'html': html, 'css': css, 'js': js}
-                    )
+            except ObjectDoesNotExist:
+                return Response({"error": "Customized template not found"}, status=status.HTTP_404_NOT_FOUND)
 
-            serializer = ShopSerializer(shop)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-    except Shop.DoesNotExist:
-        return Response({"error": "Shop not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"message": "Customized template updated successfully"}, status=status.HTTP_200_OK)
 
     except Exception as e:
-        logger.exception("Error updating shop: %s", e)
+        logger.exception("Error updating customized template: %s", e)
         return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
 @api_view(['GET'])
-def all_shops(request):
-    shops = Shop.objects.all()
-    serializer = ShopSerializer(shops, many=True)
+def get_customizedTemplate(request, merchant_id):
+    logger.info(f"Received request for CustomizedTemplate modified by Merchant with ID: {merchant_id}")
+    try:
+        customised_Template = CustomizedTemplate.objects.get(modifiedby__unique_id=merchant_id)
+    except CustomizedTemplate.DoesNotExist:
+        logger.error(f"No CustomizedTemplate found modified by Merchant with ID: {merchant_id}")
+        return Response({"error": "No CustomizedTemplate found modified by the given Merchant ID"}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = CustomizedTemplateSerializer(customised_Template, many=False)
     return Response(serializer.data)
 
-@api_view(['GET'])
-def get_shop(request, shop_id):
-    try:
-        shop = Shop.objects.get(id=shop_id)
-    except Shop.DoesNotExist:
-        return Response({"error": "Shop not found"}, status=404)
+#create shop
+@api_view(['POST'])
+def create_shop(request):
+    if request.method == 'POST':
+        name = request.data.get('name')
+        template_id = request.data.get('template')
+        if not name or not template_id:
+            return Response({"error": "Name and template are required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        owner = request.user.merchant
+        template = get_object_or_404(Template, id=template_id)
+        customized_template = CustomizedTemplate.objects.create(original_template=template, modifiedby=owner)
+        customized_template.save()
+        
+        shop = Shop.objects.create(name=name, owner=owner, customized_template=customized_template)
+        shop.save()
+        
+        serializer = ShopSerializer(shop, many=False)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    serializer = ShopSerializer(shop)
+#create a view to get a single page with the given template_id and page_id
+@api_view(['GET'])
+def get_customizedPage(request, template_id, page_name):
+    try:
+        customized_page = CustomizedPage.objects.get(customized_template=template_id, name=page_name)
+    except CustomizedPage.DoesNotExist:
+        return Response({"error": "Customized Page not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = CustomizedPageSerializer(customized_page, many=False)
     return Response(serializer.data)

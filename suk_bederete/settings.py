@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    # 'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -45,6 +46,8 @@ INSTALLED_APPS = [
     'shop',
     'category',
     'store',
+    'order',
+    'product',
     'rest_framework',
     "corsheaders",
 
@@ -84,6 +87,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'suk_bederete.wsgi.application'
+ASGI_APPLICATION = "suk_bederete.asgi.application"
+
 AUTH_USER_MODEL = 'account.Account'
 
 

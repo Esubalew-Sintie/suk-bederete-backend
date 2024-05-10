@@ -2,7 +2,8 @@
 # Create your models here.
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
-
+from rest_framework_simplejwt.tokens import RefreshToken
+#incorporate jwt to the custom user model
 # Create your models here.
 class MyaccountManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -12,7 +13,7 @@ class MyaccountManager(BaseUserManager):
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
-        return user
+        return user   
 
     def create_superuser(self, email, password, **extra_fields):
         extra_fields.setdefault('is_staff', True)
@@ -26,9 +27,16 @@ class MyaccountManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
     
 class Account(AbstractBaseUser):
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
-    username = models.CharField(max_length=50, unique=True)
+    # existing code...
+
+    def generate_tokens(self):
+        refresh = RefreshToken.for_user(self)
+        access_token = refresh.access_token
+        return {
+            'refresh': str(refresh),
+            'access': str(access_token),
+        }
+    # username = models.CharField(max_length=50, unique=True)
     email = models.EmailField(max_length=50, unique=True)
 
     date_joined = models.DateTimeField(auto_now_add=True)

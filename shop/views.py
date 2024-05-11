@@ -1,8 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
 from .models import Shop, CustomizedTemplate, CustomizedPage
-from .serializer import ShopSerializer, CustomizedPageSerializer, CustomizedTemplateSerializer
+from .serializer import ShopSerializer,ScreenshotCreateSerializer, CustomizedPageSerializer, CustomizedTemplateSerializer
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from builder.models import Template
@@ -10,6 +9,21 @@ from django.shortcuts import get_object_or_404
 from merchant.models import Merchant
 import logging
 logger = logging.getLogger(__name__)
+
+
+# views.py
+from rest_framework import status
+from rest_framework.views import APIView
+from.models import Screenshot
+
+class SaveScreenshot(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = ScreenshotCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 def save_customized_pages(request):

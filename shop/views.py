@@ -1,4 +1,4 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 from .models import Shop, CustomizedTemplate, CustomizedPage
 from .serializer import ShopSerializer,ScreenshotCreateSerializer, CustomizedPageSerializer, CustomizedTemplateSerializer
@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 # views.py
 from rest_framework import status
 from rest_framework.views import APIView
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
 from.models import Screenshot
 
 class SaveScreenshot(APIView):
@@ -26,6 +28,8 @@ class SaveScreenshot(APIView):
 
 
 @api_view(['POST'])
+# @authentication_classes([TokenAuthentication])
+# @permission_classes([IsAuthenticated])
 def save_customized_pages(request):
     try:
         if request.method == 'POST':
@@ -38,7 +42,7 @@ def save_customized_pages(request):
             modifier = serializer.validated_data.get('modifiedby')
             modified_pages_data = request.data.get('modified_pages', {})
 
-            print(f"Received request: template={template}, modified_pages={modified_pages_data}")
+            print(f"Received request: template={template}")
 
             if not template:
                 return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
@@ -54,7 +58,7 @@ def save_customized_pages(request):
                         css = page_data.get('css')
                         js = page_data.get('js', '') # Assuming JS is optional
 
-                        print(f"Processing page: {page_name}, html={html}, css={css}, js={js}")
+                        # print(f"Processing page: {page_name}, html={html}, css={css}, js={js}")
 
                         if html and css:
                             # Update or create a new customized page instance
@@ -73,12 +77,14 @@ def save_customized_pages(request):
         return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(['PATCH'])
+# @authentication_classes([TokenAuthentication])
+# @permission_classes([IsAuthenticated])
 def update_customized_template(request, template_id):
     try:
         if request.method == 'PATCH':
             modified_pages_data = request.data.get('modified_pages', {})
 
-            print(f"Received request: template_id={template_id}, modified_pages={modified_pages_data}")
+            print(f"Received request: template_id={template_id}")
 
             try:
                 customized_template = CustomizedTemplate.objects.get(id=template_id)
@@ -110,6 +116,8 @@ def update_customized_template(request, template_id):
         return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
+# @authentication_classes([TokenAuthentication])
+# @permission_classes([IsAuthenticated])
 def get_customizedTemplate(request, merchant_id):
     logger.info(f"Received request for CustomizedTemplate modified by Merchant with ID: {merchant_id}")
     try:
@@ -123,6 +131,8 @@ def get_customizedTemplate(request, merchant_id):
 
 #create shop
 @api_view(['POST'])
+# @authentication_classes([TokenAuthentication])
+# @permission_classes([IsAuthenticated])
 def create_shop(request):
     if request.method == 'POST':
         name = request.data.get('name')
@@ -143,6 +153,8 @@ def create_shop(request):
 
 #create a view to get a single page with the given template_id and page_id
 @api_view(['GET'])
+# @authentication_classes([TokenAuthentication])
+# @permission_classes([IsAuthenticated])
 def get_customizedPage(request, template_id, page_name):
     try:
         customized_page = CustomizedPage.objects.get(customized_template=template_id, name=page_name)

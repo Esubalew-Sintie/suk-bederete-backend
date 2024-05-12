@@ -14,7 +14,7 @@ def register(request):
         email = request.data.get('email')
         password = request.data.get('password')
         if not email or not password:
-            return Response({"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Email and password are required."}, status=status.HTTP_400_BAD_REQUEST)
         
         # Create the Account instance
         user = Account.objects.create_user(email=email, password=password, is_active=True)
@@ -40,7 +40,6 @@ def register(request):
         }
 
         return Response(response_data, status=status.HTTP_201_CREATED)
-
 @api_view(['POST'])
 def login(request):
     if request.method == 'POST':
@@ -51,6 +50,10 @@ def login(request):
         
         user = authenticate(email=email, password=password)
         if user:
+            # Set the merchant as active
+            user.is_active = True
+            user.save()
+            
             # Generate refresh and access tokens
             refresh = RefreshToken.for_user(user)
             tokens = {
@@ -69,7 +72,6 @@ def login(request):
                 'merchant': merchant_data,
                 'tokens': tokens,
             }
-
             return Response(response_data, status=status.HTTP_200_OK)
         else:
             return Response({"error": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)

@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     'category',
     'store',
     'order',
-    'product',
     'rest_framework',
     "corsheaders",
 
@@ -143,7 +142,13 @@ TEMPLATES = [
 WSGI_APPLICATION = 'suk_bederete.wsgi.application'
 ASGI_APPLICATION = "suk_bederete.asgi.application"
 
+AUTHENTICATION_BACKENDS = [
+   'django.contrib.auth.backends.ModelBackend',
+   'django.contrib.auth.backends.AllowAllUsersModelBackend'
+]
+
 AUTH_USER_MODEL = 'account.Account'
+
 
 
 # Database
@@ -176,6 +181,11 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+
+SESSION_COOKIE_DOMAIN = None
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
+
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
@@ -186,6 +196,7 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
+
 
 
 # Static files (CSS, JavaScript, Images)

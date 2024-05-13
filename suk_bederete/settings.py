@@ -142,12 +142,13 @@ TEMPLATES = [
 WSGI_APPLICATION = 'suk_bederete.wsgi.application'
 ASGI_APPLICATION = "suk_bederete.asgi.application"
 
+AUTH_USER_MODEL = 'account.Account'
+
 AUTHENTICATION_BACKENDS = [
-   'django.contrib.auth.backends.ModelBackend',
-   'django.contrib.auth.backends.AllowAllUsersModelBackend'
+   'django.contrib.auth.backends.AllowAllUsersModelBackend',
 ]
 
-AUTH_USER_MODEL = 'account.Account'
+
 
 
 
@@ -165,20 +166,20 @@ DATABASES = {
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
+# AUTH_PASSWORD_VALIDATORS = [
+#     {
+#         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+#     },
+#     {
+#         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+#     },
+#     {
+#         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+#     },
+#     {
+#         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+#     },
+# ]
 
 
 

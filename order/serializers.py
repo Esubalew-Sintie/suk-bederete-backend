@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from.models import Order, ShippingOption, OrderItem
-from product.serializers import ProductSerializer
+from store.serializers import ProductSerializer
 from customer.serializer import CustomerSerializer
 from merchant.serializer import MerchantSerializer
 class ShippingOptionSerializer(serializers.ModelSerializer):

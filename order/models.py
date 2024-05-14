@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from merchant.models import Merchant
-from product.models import Product  # Corrected to match the model name
+from store.models import Product  # Corrected to match the model name
 from customer.models import Customer  # Corrected to match the model name
 
 class Order(models.Model):

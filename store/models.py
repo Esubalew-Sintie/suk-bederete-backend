@@ -20,6 +20,7 @@ class ReviewRating(models.Model):
 
     def __str__(self):
         return self.subject
+    
 class Product(models.Model):
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True)
@@ -70,7 +71,6 @@ class Variation(models.Model):
     created_date        = models.DateTimeField(auto_now=True)
 
     objects = VariationManager()
-
     def __str__(self):
         return self.variation_value
 

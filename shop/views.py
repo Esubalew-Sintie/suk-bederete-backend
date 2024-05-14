@@ -49,14 +49,16 @@ def save_customized_pages(request):
 
             try:
                 with transaction.atomic():
-                    customized_template = CustomizedTemplate.objects.create(original_template=template, modifiedby=modifier)
-                    customized_template.save()
+                    customized_template, created = CustomizedTemplate.objects.update_or_create(
+                        original_template=template,
+                        defaults={'modifiedby': modifier}
+                    )
 
                     # Process modified pages
                     for page_name, page_data in modified_pages_data.items():
                         html = page_data.get('html')
                         css = page_data.get('css')
-                        js = page_data.get('js', '') # Assuming JS is optional
+                        js = page_data.get('js', '')  # Assuming JS is optional
 
                         # print(f"Processing page: {page_name}, html={html}, css={css}, js={js}")
 
@@ -76,45 +78,6 @@ def save_customized_pages(request):
         logger.exception("Error saving customized pages: %s", e)
         return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-@api_view(['PATCH'])
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
-def update_customized_template(request, template_id):
-    try:
-        if request.method == 'PATCH':
-            modified_pages_data = request.data.get('modified_pages', {})
-
-            print(f"Received request: template_id={template_id}")
-
-            try:
-                customized_template = CustomizedTemplate.objects.get(id=template_id)
-                
-                with transaction.atomic():
-                    
-
-                    # Process modified pages
-                    for page_name, page_data in modified_pages_data.items():
-                        html = page_data.get('html')
-                        css = page_data.get('css')
-                        js = page_data.get('js', '') # Assuming JS is optional
-
-                        if html and css:
-                            # Update or create a new customized page instance
-                            CustomizedPage.objects.update_or_create(
-                                customized_template=customized_template,
-                                name=page_name,
-                                defaults={'html': html, 'css': css, 'js': js}
-                            )
-
-            except ObjectDoesNotExist:
-                return Response({"error": "Customized template not found"}, status=status.HTTP_404_NOT_FOUND)
-
-            return Response({"message": "Customized template updated successfully"}, status=status.HTTP_200_OK)
-
-    except Exception as e:
-        logger.exception("Error updating customized template: %s", e)
-        return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 @api_view(['GET'])
 # @authentication_classes([TokenAuthentication])
 # @permission_classes([IsAuthenticated])
@@ -162,4 +125,11 @@ def get_customizedPage(request, template_id, page_name):
         return Response({"error": "Customized Page not found"}, status=status.HTTP_404_NOT_FOUND)
     
     serializer = CustomizedPageSerializer(customized_page, many=False)
+    return Response(serializer.data)
+
+#get all shops
+@api_view(['GET'])
+def get_shops(request):
+    shops = Shop.objects.all()
+    serializer = ShopSerializer(shops, many=True)
     return Response(serializer.data)

@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'customer',
     'merchant',
     'shop',
+   
     'category',
     'store',
     'order',

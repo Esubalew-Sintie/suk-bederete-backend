@@ -42,6 +42,7 @@ INSTALLED_APPS = [
 
     'account',
     'builder',
+    'product',
     'customer',
     'merchant',
     'shop',

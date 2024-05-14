@@ -16,7 +16,7 @@ class CustomizedTemplateSerializer(ModelSerializer):
 class CustomizedPageSerializer(ModelSerializer):
     class Meta:
         model= CustomizedPage
-        fields = '__all__' 
+        fields = '__all__'
 
 
 

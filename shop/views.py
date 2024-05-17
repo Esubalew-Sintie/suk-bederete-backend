@@ -12,11 +12,83 @@ logger = logging.getLogger(__name__)
 
 
 # views.py
-from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from.models import Screenshot
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.core.files.storage import default_storage
+import os
+from rest_framework import status
+from rest_framework.parsers import FormParser, MultiPartParser
+
+from rest_framework.views import APIView
+from.serializer import PictureUploadSerializer
+from django.conf import settings
+from django.core.files.storage import default_storage
+from.models import Picture
+
+def generate_picture_urls(pictures):
+    urls = []
+    # print(pictures)
+    for picture in pictures:
+        # Get the original filename
+        original_filename = picture.image.name
+        
+        # Generate the URL for the image
+        url = f"http://localhost:8000//{settings.MEDIA_URL}{original_filename}"
+        
+        # Append the URL to the list
+        urls.append(url)
+    
+    return urls
+
+
+class PictureUploadView(APIView):
+    parser_classes = [MultiPartParser]  # Use MultiPartParser for file uploads
+
+    def post(self, request, *args, **kwargs):
+        serializer = PictureUploadSerializer(data=request.data)
+        if serializer.is_valid():
+            # Instead of calling serializer.save() directly, you need to handle the files manually
+            files = request.FILES.getlist('files')
+            pictures = []
+            for file in files:
+                picture = Picture(image=file)  # Create a new Picture instance for each file
+                picture.save()  # Save the instance to the database
+                pictures.append(picture)  # Add the instance to the list
+            
+            # Now, pictures is a list of Picture instances, so we can pass it to generate_picture_urls
+            picture_urls = generate_picture_urls(pictures)
+            return Response(picture_urls, status=200)
+        else:
+            # Return a response indicating validation failed
+            return Response(serializer.errors, status=400)
+@csrf_exempt
+def upload_file(request):
+    if request.method == 'POST':
+        files = request.FILES.getlist('files')
+        responses = []  
+        print(files)
+        # List to collect all responses
+        for file in files:
+            print(file.name)
+            # Save the file to a temporary location
+            temp_path = default_storage.save(file.name, file)
+            
+            # Optionally, move the file to a more permanent location
+            # For simplicity, we'll just keep it in the temporary folder
+            final_path = temp_path
+            
+            # Collect the response for each file
+            responses.append({'urls': f'{settings.MEDIA_URL}{final_path}'})
+        
+        # Return a single JSON response containing all file URLs
+        return JsonResponse(responses, safe=False)
+    else:
+        return JsonResponse({'error': 'Invalid request'}, status=400)
+
 
 class SaveScreenshot(APIView):
     def post(self, request, *args, **kwargs):

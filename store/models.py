@@ -2,6 +2,7 @@ from django.db import models
 from category.models import ProductCategory
 from account.models import Account
 from shop.models import Shop
+from merchant.models import Merchant
 from django.urls import reverse
 from django.db.models import Avg, Count
 
@@ -23,11 +24,11 @@ class ReviewRating(models.Model):
     
 class Product(models.Model):
     name = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=200, unique=True)
-    image = models.ImageField(upload_to='products/')
+    slug = models.SlugField(max_length=200, unique=True,blank=True)
+    image = models.ImageField(upload_to='products/',blank=True)
     stock = models.IntegerField()
     is_available = models.BooleanField(default=True)
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='products')
+    productHolder = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name='products')
     category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE, related_name='products')
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField()

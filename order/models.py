@@ -17,7 +17,7 @@ class Order(models.Model):
     order_status = models.CharField(
         max_length=20,
         choices=ORDER_STATUS_CHOICES,
-        default='P',  # This should match one of the values in the choices
+        default='Pending',  # This should match one of the values in the choices
     )   
     order_items = models.ManyToManyField('OrderItem', related_name='orders')
     payment_status = models.CharField(max_length=40)
@@ -44,4 +44,4 @@ class OrderItem(models.Model):
     quantity_ordered = models.PositiveIntegerField(default=1)
 
     def __str__(self):
-        return f"{self.product.productName} - {self.quantity_ordered}"
+        return f"{self.product.name} - {self.quantity_ordered}"

@@ -3,7 +3,7 @@ from . import views
 
 
 urlpatterns = [
-    path('upload/', views.SaveScreenshot.as_view(), name='upload-screenshot'),
+    path('upload/', views.PictureUploadView.as_view(), name='upload-screenshot'),
     path('customized_template/', views.save_customized_pages, name='customized_shop'),
     path('getcustomized_template/<uuid:merchant_id>/', views.get_customizedTemplate, name='get_customized_shop'),
     path('getcustomised_page/<int:template_id>/<str:page_name>/', views.get_customizedPage, name='get_customized_page'),

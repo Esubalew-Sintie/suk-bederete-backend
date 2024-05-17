@@ -67,4 +67,7 @@ class ShopRating(models.Model):
 class Screenshot(models.Model):
     image = models.ImageField(upload_to='images/screenshots/')
     caption = models.CharField(max_length=255, blank=True)
-    
+
+
+class Picture(models.Model):
+    image = models.ImageField(upload_to='pictures/')

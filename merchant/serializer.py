@@ -8,7 +8,7 @@ class MerchantSerializer(ModelSerializer):
 
     class Meta:
         model = Merchant
-        fields = ('user','unique_id', 'bank_account_number', 'has_physical_store', 'physical_shop_name', 'physical_shop_address', 'physical_shop_city', 'physical_shop_phone_number', 'online_shop_type')
+        fields = ('id','user','unique_id', 'bank_account_number', 'has_physical_store', 'physical_shop_name', 'physical_shop_address', 'physical_shop_city', 'physical_shop_phone_number', 'online_shop_type')
 
     def create(self, validated_data):
         user_data = validated_data.pop('user')

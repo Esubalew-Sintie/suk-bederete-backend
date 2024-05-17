@@ -6,6 +6,7 @@ urlpatterns = [
     path('upload/', views.SaveScreenshot.as_view(), name='upload-screenshot'),
     path('customized_template/', views.save_customized_pages, name='customized_shop'),
     path('getcustomized_template/<uuid:merchant_id>/', views.get_customizedTemplate, name='get_customized_shop'),
+    path('getcustomised_pages/<uuid:merchant_id>/', views.get_customizedPages, name='get_customized_pages'),
     path('getcustomised_page/<int:template_id>/<str:page_name>/', views.get_customizedPage, name='get_customized_page'),
     path('getshops/', views.get_shops, name='get_shops'),
     path('publish_shop/', views.create_shop, name='create_shop'),

@@ -5,6 +5,8 @@ from.models import Product
 from merchant.models import Merchant
 from category.models import ProductCategory
 from.serializers import ProductSerializer
+from rest_framework.pagination import PageNumberPagination
+import random
 import logging
 
 # Configure logging
@@ -64,19 +66,77 @@ class ProductManagementView(APIView):
     except Exception as e:
         logger.exception("An error occurred while processing the request.")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+    
    def get(self, request, *args, **kwargs):
-        # Retrieve products
         category_slug = request.query_params.get('category', None)
-
+        merchantId = request.GET.get('merchantId')
+        
+        # Initialize the response data
+        response_data = {}
+        
+        # Get random 4 products for 'featured' category added by the merchant
+        all_products = list(Product.objects.filter(productHolder=merchantId))
+        featured_products = random.sample(all_products, min(4, len(all_products)))
+        
+        # Get latest 8 products for 'new_arrival' category added by the merchant
+        new_arrival_products = Product.objects.filter(productHolder=merchantId).order_by('-created_at')[:8]
+        
+        # Get all products with pagination for 'all_products' category added by the merchant
+        paginator = PageNumberPagination()
+        paginator.page_size = 10
+        result_page = paginator.paginate_queryset(Product.objects.filter(productHolder=merchantId), request)
+        all_products_paginated = ProductSerializer(result_page, many=True).data
+        
+        # Add serialized products to the response data
+        response_data['featured'] = ProductSerializer(featured_products, many=True).data
+        response_data['new_arrival'] = ProductSerializer(new_arrival_products, many=True).data
+        response_data['all_products'] = all_products_paginated
+        
+        # Handle category filtering if provided
         if category_slug:
-            # Filter products by category slug
-            products = Product.objects.filter(category__slug=category_slug)
-        else:
-            # Return all products if no category filter is applied
-            products = Product.objects.all()
+            filtered_products = Product.objects.filter(category__slug=category_slug, productHolder=merchantId)
+            response_data['filtered'] = ProductSerializer(filtered_products, many=True).data
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+    # creating patch view for updating products coming as a list
+   def patch(self, request, *args, **kwargs):
+        try:
+            products_data = request.data.get('products', [])
+            merchantId = request.data.get('merchantId')
+            try:
+                merchant = Merchant.objects.get(unique_id=merchantId)
+            except Merchant.DoesNotExist:
+                return Response({"error": "Merchant not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Serialize the queryset
-        product_serializer = ProductSerializer(products, many=True)
+            if not products_data:
+                return Response({"error": "No products data provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(product_serializer.data,status=status.HTTP_200_OK)
+            updated_products = []
+
+            for product_data in products_data:
+                product_id = product_data.get('id')
+                if not product_id:
+                    logger.warning(f"Missing required data for product: {product_id}")
+                    continue
+
+                try:
+                    product = Product.objects.get(id=product_id)
+                except Product.DoesNotExist:
+                    logger.warning(f"Product not found with ID: {product_id}")
+                    continue
+
+                # Adjusting the serializer initialization to pass the category object directly
+                product_serializer = ProductSerializer(product, data=product_data, partial=True)
+                if product_serializer.is_valid():
+                    product = product_serializer.save()
+                    updated_products.append(product)
+                else:
+                    logger.error(f"Validation error for product: {product_id} && {product_serializer.errors}")
+
+            return Response({
+                "message": f"{len(updated_products)} products updated successfully",
+                "products": ProductSerializer(updated_products, many=True).data,
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception("An error occurred while processing the request.")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

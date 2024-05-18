@@ -102,10 +102,10 @@ REST_FRAMEWORK = {
         
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ), 
-    'DEFAULT_PARSER_CLASSES': [
-        'rest_framework.parsers.MultiPartParser',
-        'rest_framework.parsers.FormParser',
-    ]
+    # 'DEFAULT_PARSER_CLASSES': [
+    #     'rest_framework.parsers.MultiPartParser',
+    #     'rest_framework.parsers.FormParser',
+    # ]
     
 }
 
@@ -150,6 +150,7 @@ AUTH_USER_MODEL = 'account.Account'
 
 AUTHENTICATION_BACKENDS = [
    'django.contrib.auth.backends.AllowAllUsersModelBackend',
+   
 ]
 
 
@@ -163,12 +164,19 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'postgres',
-        'USER': 'postgres.fkcwxfhxsauqoudenykz',
-        'PASSWORD': '@r2_wnXFExYzH/J',
+        'USER': 'postgres.isecqywtiwzstvxppsbd',
+        'PASSWORD': 'DvTpr8UbsdX8YWs',
         'HOST': 'aws-0-us-east-1.pooler.supabase.com',
         'PORT': '5432',
     }
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
 
 
 # Password validation

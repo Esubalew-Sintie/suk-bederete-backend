@@ -1,20 +1,18 @@
-# Use an official Python runtime as the base image
-FROM python:3.12-slim
 
-# Set the working directory in the container
+FROM python:3.12.3-slim
+
+ENV PYTHONUNBUFFERED 1
+
 WORKDIR /app
 
-# Copy the requirements file to the working directory
 COPY requirements.txt .
 
-# Install the required dependencies
-RUN pip install -r requirements.txt
+RUN python -m pip install -r requirements.txt
 
-# Copy the rest of the application code to the working directory
-COPY . .
+COPY . /app/
 
-# Expose the port on which the application will run
+RUN chmod +x /app/django.sh
+
 EXPOSE 8000
 
-# Define the command to run your application
-CMD CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+ENTRYPOINT ["/app/django.sh"]

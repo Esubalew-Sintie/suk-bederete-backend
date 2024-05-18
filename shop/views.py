@@ -202,6 +202,7 @@ def get_customizedPage(request, template_id, page_name):
 @api_view(['GET'])
 def get_customizedPages(request, merchant_id):
     try:
+        print(merchant_id)
         customized_template = CustomizedTemplate.objects.get(modifiedby__unique_id=merchant_id)
     except CustomizedTemplate.DoesNotExist:
         return Response({"error": "Customized Template not found"}, status=status.HTTP_404_NOT_FOUND)

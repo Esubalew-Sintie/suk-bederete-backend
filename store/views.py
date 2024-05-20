@@ -5,6 +5,8 @@ from.models import Product
 from merchant.models import Merchant
 from category.models import ProductCategory
 from.serializers import ProductSerializer
+from rest_framework.parsers import  MultiPartParser
+
 from rest_framework.pagination import PageNumberPagination
 import random
 import logging
@@ -20,6 +22,8 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 class ProductManagementView(APIView):
+   parser_classes = [MultiPartParser]  # Use MultiPartParser for file uploads
+
    def post(self, request, *args, **kwargs):
     try:
         products_data = request.data.get('products', [])
@@ -36,9 +40,10 @@ class ProductManagementView(APIView):
 
         for product_data in products_data:
             category_name = product_data.get('category')
-            # image = None
-            # if 'image' in request.FILES:
-            #     image = request.FILES['image']
+            image = None
+            if 'image' in request.FILES:
+                image = request.FILES['image']
+                product_data['image'] = image
 
             if not category_name or not merchant:
                 logger.warning(f"Missing required data for product: {category_name} && {merchantId}")
@@ -67,37 +72,7 @@ class ProductManagementView(APIView):
         logger.exception("An error occurred while processing the request.")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-   def get(self, request, *args, **kwargs):
-        category_slug = request.query_params.get('category', None)
-        merchantId = request.GET.get('merchantId')
-        
-        # Initialize the response data
-        response_data = {}
-        
-        # Get random 4 products for 'featured' category added by the merchant
-        all_products = list(Product.objects.filter(productHolder=merchantId))
-        featured_products = random.sample(all_products, min(4, len(all_products)))
-        
-        # Get latest 8 products for 'new_arrival' category added by the merchant
-        new_arrival_products = Product.objects.filter(productHolder=merchantId).order_by('-created_at')[:8]
-        
-        # Get all products with pagination for 'all_products' category added by the merchant
-        paginator = PageNumberPagination()
-        paginator.page_size = 10
-        result_page = paginator.paginate_queryset(Product.objects.filter(productHolder=merchantId), request)
-        all_products_paginated = ProductSerializer(result_page, many=True).data
-        
-        # Add serialized products to the response data
-        response_data['featured'] = ProductSerializer(featured_products, many=True).data
-        response_data['new_arrival'] = ProductSerializer(new_arrival_products, many=True).data
-        response_data['all_products'] = all_products_paginated
-        
-        # Handle category filtering if provided
-        if category_slug:
-            filtered_products = Product.objects.filter(category__slug=category_slug, productHolder=merchantId)
-            response_data['filtered'] = ProductSerializer(filtered_products, many=True).data
-        
-        return Response(response_data, status=status.HTTP_200_OK)
+   
     # creating patch view for updating products coming as a list
    def patch(self, request, *args, **kwargs):
         try:
@@ -140,3 +115,35 @@ class ProductManagementView(APIView):
         except Exception as e:
             logger.exception("An error occurred while processing the request.")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class GetProducts(APIView):
+    def get(self, request, merchant_id, *args, **kwargs):
+        category_slug = request.query_params.get('category', None)
+        
+        # Initialize the response data
+        response_data = {}
+        
+        # Get random 4 products for 'featured' category added by the merchant
+        all_products = list(Product.objects.filter(productHolder=merchant_id))  # Corrected here
+        featured_products = random.sample(all_products, min(4, len(all_products)))
+        
+        # Get latest 8 products for 'new_arrival' category added by the merchant
+        new_arrival_products = Product.objects.filter(productHolder=merchant_id).order_by('-created_at')[:8]  # And here
+        
+        # Get all products with pagination for 'all_products' category added by the merchant
+        paginator = PageNumberPagination()
+        paginator.page_size = 10
+        result_page = paginator.paginate_queryset(Product.objects.filter(productHolder=merchant_id), request)  # And here
+        all_products_paginated = ProductSerializer(result_page, many=True).data
+        
+        # Add serialized products to the response data
+        response_data['featured'] = ProductSerializer(featured_products, many=True).data
+        response_data['new_arrival'] = ProductSerializer(new_arrival_products, many=True).data
+        response_data['all_products'] = all_products_paginated
+        
+        # Handle category filtering if provided
+        if category_slug:
+            filtered_products = Product.objects.filter(category__slug=category_slug, productHolder=merchant_id)  # And here
+            response_data['filtered'] = ProductSerializer(filtered_products, many=True).data
+        
+        return Response(response_data, status=status.HTTP_200_OK)

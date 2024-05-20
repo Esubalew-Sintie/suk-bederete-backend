@@ -115,6 +115,7 @@ def save_customized_pages(request):
             modified_pages_data = request.data.get('modified_pages', {})
 
             print(f"Received request: template={template}")
+            print(f'recevied modifiedpages :{modified_pages_data}')
 
             if not template:
                 return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)

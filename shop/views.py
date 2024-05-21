@@ -29,6 +29,8 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from.models import Picture
 
+DEFAULT_IMAGE_URL = 'media/shop/shop_preview_default.jpg'
+
 def generate_picture_urls(pictures):
     urls = []
     # print(pictures)
@@ -117,14 +119,15 @@ def save_customized_pages(request):
             print(f"Received request: template={template}")
             print(f'recevied modifiedpages :{modified_pages_data}')
 
-            if not template:
+            if not template or not modifier:
                 return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
 
             try:
                 with transaction.atomic():
-                    customized_template, created = CustomizedTemplate.objects.update_or_create(
+                    # Create a new customized template for each modifier and template pair
+                    customized_template = CustomizedTemplate.objects.create(
                         original_template=template,
-                        defaults={'modifiedby': modifier}
+                        modifiedby=modifier
                     )
 
                     # Process modified pages
@@ -133,14 +136,14 @@ def save_customized_pages(request):
                         css = page_data.get('css')
                         js = page_data.get('js', '')  # Assuming JS is optional
 
-                        # print(f"Processing page: {page_name}, html={html}, css={css}, js={js}")
-
                         if html and css:
-                            # Update or create a new customized page instance
-                            CustomizedPage.objects.update_or_create(
+                            # Create a new customized page instance
+                            CustomizedPage.objects.create(
                                 customized_template=customized_template,
                                 name=page_name,
-                                defaults={'html': html, 'css': css, 'js': js}
+                                html=html,
+                                css=css,
+                                js=js
                             )
             except ObjectDoesNotExist:
                 return Response({"error": "Template or Customized template not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -150,7 +153,61 @@ def save_customized_pages(request):
     except Exception as e:
         logger.exception("Error saving customized pages: %s", e)
         return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+#create view to update customised pages with the given customised templateId
+
+@api_view(['POST'])
+# @authentication_classes([TokenAuthentication])
+# @permission_classes([IsAuthenticated])
+def update_customized_pages(request, template_id):
+    try:
+        # Get the customized template
+        customized_template = get_object_or_404(CustomizedTemplate, pk=template_id)
+        if request.method == 'POST':
+
+            modified_pages_wrapper = request.data.get('modified_pages')
+            modified_pages_data = modified_pages_wrapper.get('modifiedPages')
+            
+
+        if not modified_pages_data:
+            return Response({"error": "No modified pages data provided"}, status=status.HTTP_400_BAD_REQUEST)
+        print(f"Received request: template={modified_pages_data}")
+        
+
+        with transaction.atomic():
+            # Process modified pages
+            for page_name, page_data in modified_pages_data.items():
+                htmlcontent = page_data.get('html')
+                csscontent = page_data.get('css')
+                jscontent = page_data.get('js')
+
+                print(f"Processing page: {page_name}")
+                print(f"HTML content: {htmlcontent}")
+                print(f"CSS content: {csscontent}")
+                print(f"JS content: {jscontent}")
+                
+                if htmlcontent and csscontent:
+                    # Update or create the customized page instance
+                    # CustomizedPage.objects.update_or_create(
+                    #     customized_template=customized_template,
+                    #     name=page_name,
+                    #     defaults={
+                    #         'html': htmlcontent,
+                    #         'css': csscontent,
+                    #         'js': jscontent
+                    #     }
+                    # )
+                    try:
+                        page = CustomizedPage.objects.get(customized_template=customized_template, name=page_name)
+                        page.html = htmlcontent
+                        page.css = csscontent
+                        page.js = jscontent
+                        page.save()
+                    except CustomizedPage.DoesNotExist:
+                        return Response({"error": "Customized Page not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"message": "Customized pages updated successfully"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        logger.exception("Error updating customized pages: %s", e)
+        return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 @api_view(['GET'])
 # @authentication_classes([TokenAuthentication])
 # @permission_classes([IsAuthenticated])
@@ -165,26 +222,35 @@ def get_customizedTemplate(request, merchant_id):
     serializer = CustomizedTemplateSerializer(customised_Template, many=False)
     return Response(serializer.data)
 
-#create shop
 @api_view(['POST'])
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
 def create_shop(request):
     if request.method == 'POST':
+        # Get data from the request
         name = request.data.get('name')
-        template_id = request.data.get('template')
-        if not name or not template_id:
-            return Response({"error": "Name and template are required."}, status=status.HTTP_400_BAD_REQUEST)
+        customized_template_id = request.data.get('customised_template')
+        preview_image = request.data.get('preview_image', None)
         
+        # Validate if name is provided
+        if not name:
+            return Response({"error": "Name is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get the authenticated user (merchant)
         owner = request.user.merchant
-        template = get_object_or_404(Template, id=template_id)
-        customized_template = CustomizedTemplate.objects.create(original_template=template, modifiedby=owner)
-        customized_template.save()
+        customizedTemplate = get_object_or_404(CustomizedTemplate, pk=customized_template_id)
+
+        print(owner)
+
+        if preview_image is None:
+            preview_image = DEFAULT_IMAGE_URL
         
-        shop = Shop.objects.create(name=name, owner=owner, customized_template=customized_template)
-        shop.save()
+        # Create the shop with only the name
+        shop, created = Shop.objects.update_or_create(name=name, owner=owner,preview_image=preview_image, customized_template=customizedTemplate)
         
-        serializer = ShopSerializer(shop, many=False)
+        
+        
+        # Serialize the created shop
+        serializer = ShopSerializer(shop)
+        
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 #create a view to get a single page with the given template_id and page_id

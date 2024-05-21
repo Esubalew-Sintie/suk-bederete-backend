@@ -9,7 +9,7 @@ from.models import Screenshot
 class ShopSerializer(ModelSerializer):
     class Meta:
         model= Shop
-        fields = '__all__' 
+        fields =  '__all__' 
 
 class CustomizedTemplateSerializer(ModelSerializer):
     class Meta:

@@ -8,6 +8,7 @@ urlpatterns = [
     path('getcustomized_template/<uuid:merchant_id>/', views.get_customizedTemplate, name='get_customized_shop'),
     path('getcustomised_pages/<uuid:merchant_id>/', views.get_customizedPages, name='get_customized_pages'),
     path('getcustomised_page/<int:template_id>/<str:page_name>/', views.get_customizedPage, name='get_customized_page'),
+    path('updatecustomised_pages/<int:template_id>/', views.update_customized_pages, name='update_customized_pages'),
     path('getshops/', views.get_shops, name='get_shops'),
     path('publish_shop/', views.create_shop, name='create_shop'),
 

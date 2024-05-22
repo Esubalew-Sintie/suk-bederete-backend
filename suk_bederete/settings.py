@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'store',
     'order',
     'rest_framework',
+    'rest_framework_simplejwt',
     "corsheaders",
 
 ]
@@ -57,7 +58,7 @@ INSTALLED_APPS = [
 
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=100),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=20),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -102,6 +103,8 @@ REST_FRAMEWORK = {
         
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ), 
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    
     # 'DEFAULT_PARSER_CLASSES': [
     #     'rest_framework.parsers.MultiPartParser',
     #     'rest_framework.parsers.FormParser',
@@ -226,6 +229,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://localhost:8000",
 ]
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

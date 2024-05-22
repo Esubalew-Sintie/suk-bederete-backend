@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from .models import Shop, CustomizedTemplate, CustomizedPage
 from .serializer import ShopSerializer,ScreenshotCreateSerializer, CustomizedPageSerializer, CustomizedTemplateSerializer
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db import transaction
 from builder.models import Template
 from django.shortcuts import get_object_or_404
@@ -170,7 +171,7 @@ def update_customized_pages(request, template_id):
 
         if not modified_pages_data:
             return Response({"error": "No modified pages data provided"}, status=status.HTTP_400_BAD_REQUEST)
-        print(f"Received request: template={modified_pages_data}")
+        
         
 
         with transaction.atomic():
@@ -179,11 +180,6 @@ def update_customized_pages(request, template_id):
                 htmlcontent = page_data.get('html')
                 csscontent = page_data.get('css')
                 jscontent = page_data.get('js')
-
-                print(f"Processing page: {page_name}")
-                print(f"HTML content: {htmlcontent}")
-                print(f"CSS content: {csscontent}")
-                print(f"JS content: {jscontent}")
                 
                 if htmlcontent and csscontent:
                     # Update or create the customized page instance
@@ -223,35 +219,50 @@ def get_customizedTemplate(request, merchant_id):
     return Response(serializer.data)
 
 @api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def create_shop(request):
-    if request.method == 'POST':
+    try:
         # Get data from the request
         name = request.data.get('name')
         customized_template_id = request.data.get('customised_template')
         preview_image = request.data.get('preview_image', None)
+
+        print(f"Received request: name={name}, customized_template_id={customized_template_id}, preview_image={preview_image}")
         
         # Validate if name is provided
         if not name:
             return Response({"error": "Name is required."}, status=status.HTTP_400_BAD_REQUEST)
         
         # Get the authenticated user (merchant)
-        owner = request.user.merchant
-        customizedTemplate = get_object_or_404(CustomizedTemplate, pk=customized_template_id)
-
-        print(owner)
+        owner = request.user
+        
+        # Check if the user is a merchant
+        if not hasattr(owner, 'merchant'):
+            return Response({"error": "Authenticated user is not a merchant."}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get the customized template
+        customized_template = get_object_or_404(CustomizedTemplate, pk=customized_template_id)
 
         if preview_image is None:
             preview_image = DEFAULT_IMAGE_URL
         
         # Create the shop with only the name
-        shop, created = Shop.objects.update_or_create(name=name, owner=owner,preview_image=preview_image, customized_template=customizedTemplate)
-        
-        
+        shop, created = Shop.objects.update_or_create(
+            name=name, 
+            owner=owner.merchant,  # Assuming owner is related to merchant
+            preview_image=preview_image, 
+            customized_template=customized_template
+        )
         
         # Serialize the created shop
         serializer = ShopSerializer(shop)
-        
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        logger.exception("Error creating shop: %s", e)
+        return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
 
 #create a view to get a single page with the given template_id and page_id
 @api_view(['GET'])
@@ -285,3 +296,20 @@ def get_shops(request):
     shops = Shop.objects.all()
     serializer = ShopSerializer(shops, many=True)
     return Response(serializer.data)
+
+#send a customised page of a customised template associated with the given shop_id
+@api_view(['GET'])
+def get_shop(request, shop_id):
+    print(f"Received request for Shop with ID: {shop_id}")
+    try:
+        shop = get_object_or_404(Shop, unique_id=shop_id)
+    except Shop.DoesNotExist:
+        return Response({"error": "Shop not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    customized_template = shop.customized_template
+    if not customized_template:
+        return Response({"error": "Customized Template not found"}, status=status.HTTP_404_NOT_FOUND)
+    pages = CustomizedPage.objects.filter(customized_template=customized_template)
+    serializer = CustomizedPageSerializer(pages, many=True)
+    return Response(serializer.data)
+

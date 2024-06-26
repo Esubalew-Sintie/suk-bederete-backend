@@ -9,10 +9,6 @@ from builder.models import Template
 from django.shortcuts import get_object_or_404
 from merchant.models import Merchant
 import logging
-logger = logging.getLogger(__name__)
-
-
-# views.py
 from rest_framework.views import APIView
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -23,12 +19,13 @@ from django.core.files.storage import default_storage
 import os
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
-
 from rest_framework.views import APIView
 from.serializer import PictureUploadSerializer
 from django.conf import settings
 from django.core.files.storage import default_storage
 from.models import Picture
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_IMAGE_URL = 'media/shop/shop_preview_default.jpg'
 
@@ -103,8 +100,8 @@ class SaveScreenshot(APIView):
 
 
 @api_view(['POST'])
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def save_customized_pages(request):
     try:
         if request.method == 'POST':
@@ -157,8 +154,8 @@ def save_customized_pages(request):
 #create view to update customised pages with the given customised templateId
 
 @api_view(['POST'])
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def update_customized_pages(request, template_id):
     try:
         # Get the customized template
@@ -205,8 +202,8 @@ def update_customized_pages(request, template_id):
         logger.exception("Error updating customized pages: %s", e)
         return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 @api_view(['GET'])
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def get_customizedTemplate(request, merchant_id):
     logger.info(f"Received request for CustomizedTemplate modified by Merchant with ID: {merchant_id}")
     try:
@@ -266,8 +263,8 @@ def create_shop(request):
 
 #create a view to get a single page with the given template_id and page_id
 @api_view(['GET'])
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def get_customizedPage(request, template_id, page_name):
     try:
         customized_page = CustomizedPage.objects.get(customized_template=template_id, name=page_name)
@@ -313,3 +310,14 @@ def get_shop(request, shop_id):
     serializer = CustomizedPageSerializer(pages, many=True)
     return Response(serializer.data)
 
+#creating a view to verify if the given merchant_id is associated with a shop
+@api_view(['GET'])
+def get_shop_by_merchant(request, merchant_id):
+    try:
+        merchant = Merchant.objects.get(unique_id=merchant_id)
+    except Merchant.DoesNotExist:
+        return Response({"error": "Merchant not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    shop = Shop.objects.filter(owner=merchant)
+    serializer = ShopSerializer(shop, many=True)
+    return Response(serializer.data)

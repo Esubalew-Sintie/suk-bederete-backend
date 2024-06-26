@@ -3,18 +3,26 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .models import Template, Page
 from .serializer import TemplateSerializer, PageSerializer
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework import status
 # Create your views here.
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework import status
 
 @api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def getTemplates(request):
     templates = Template.objects.all()
     serializer = TemplateSerializer(instance=templates, many=True)
     return Response(serializer.data) 
 
 @api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def getTemplatePages(request, template_id):
     try:
         # Retrieve the template object
@@ -34,12 +42,16 @@ def getTemplatePages(request, template_id):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def getTemplate(request, pk):
     template = Template.objects.get(pk=pk)
     serializer = TemplateSerializer(instance=template, many=False)
     return Response(serializer.data)
 
 @api_view(['PATCH'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def updatePageContent(request, template_id, page_id):
     try:
         # Get the specific page related to the template_id and page_id
@@ -69,6 +81,8 @@ def updatePageContent(request, template_id, page_id):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def getePage(request, template_id, page_id):
     try:
         # Get the specific page related to the template_id and page_id
@@ -88,6 +102,8 @@ def getePage(request, template_id, page_id):
     
 
 @api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def getTemplatePage(request, template_id):
     try:
         # Retrieve the template object

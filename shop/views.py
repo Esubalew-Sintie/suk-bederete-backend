@@ -24,6 +24,7 @@ from.serializer import PictureUploadSerializer
 from django.conf import settings
 from django.core.files.storage import default_storage
 from.models import Picture
+from rest_framework.permissions import AllowAny
 
 logger = logging.getLogger(__name__)
 
@@ -275,6 +276,8 @@ def get_customizedPage(request, template_id, page_name):
     return Response(serializer.data)
 
 @api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def get_customizedPages(request, merchant_id):
     try:
         print(merchant_id)
@@ -289,6 +292,7 @@ def get_customizedPages(request, merchant_id):
 
 #get all shops
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def get_shops(request):
     shops = Shop.objects.all()
     serializer = ShopSerializer(shops, many=True)
@@ -296,6 +300,7 @@ def get_shops(request):
 
 #send a customised page of a customised template associated with the given shop_id
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def get_shop(request, shop_id):
     print(f"Received request for Shop with ID: {shop_id}")
     try:
@@ -312,6 +317,7 @@ def get_shop(request, shop_id):
 
 #creating a view to verify if the given merchant_id is associated with a shop
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def get_shop_by_merchant(request, merchant_id):
     try:
         merchant = Merchant.objects.get(unique_id=merchant_id)
@@ -319,5 +325,9 @@ def get_shop_by_merchant(request, merchant_id):
         return Response({"error": "Merchant not found"}, status=status.HTTP_404_NOT_FOUND)
     
     shop = Shop.objects.filter(owner=merchant)
+    
+    if not shop.exists():
+        return Response({"error": "No shops found for this merchant"}, status=status.HTTP_404_NOT_FOUND)
+    
     serializer = ShopSerializer(shop, many=True)
     return Response(serializer.data)

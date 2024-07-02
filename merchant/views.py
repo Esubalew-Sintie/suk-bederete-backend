@@ -7,23 +7,35 @@ from.models import Merchant
 from account.serializer import AccountSerializer
 from account.models import Account
 from rest_framework_simplejwt.tokens import RefreshToken
+from customer.models import Customer
+from customer.serializer import CustomerSerializer
 
 @api_view(['POST'])
 def register(request):
     if request.method == 'POST':
         email = request.data.get('email')
         password = request.data.get('password')
-        if not email or not password:
-            return Response({"error": "Email and password are required."}, status=status.HTTP_400_BAD_REQUEST)
-        
+        role = request.data.get('role')
+
+        if not email or not password or not role:
+            return Response({"error": "Email, password, and role are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if role not in ['merchant', 'client']:
+            return Response({"error": "Invalid role. Role must be 'merchant' or 'client'."}, status=status.HTTP_400_BAD_REQUEST)
+
         # Create the Account instance
-        user = Account.objects.create_user(email=email, password=password, is_active=True)
-        
-        # Create the Merchant instance with minimal information
-        merchant = Merchant.objects.create(user=user, bank_account_number="")
-        
-        # Serialize the merchant instance
-        serializer = MerchantSerializer(merchant, many=False)
+        user = Account.objects.create_user(email=email, password=password, role=role, is_active=True)
+
+        if role == 'merchant':
+            # Create the Merchant instance
+            merchant = Merchant.objects.create(user=user, bank_account_number="")
+            # Serialize the merchant instance
+            serializer = MerchantSerializer(merchant, many=False)
+        else:
+            # Create the Client instance
+            client = Customer.objects.create(user=user)
+            # Serialize the client instance
+            serializer = CustomerSerializer(client, many=False)
 
         # Generate refresh and access tokens
         refresh = RefreshToken.for_user(user)
@@ -33,10 +45,10 @@ def register(request):
         }
 
         response_data = {
-            'message': 'Merchant registered successfully',
+            'message': f'{role.capitalize()} registered successfully',
             'email': email,
             'tokens': tokens,
-            'merchant': serializer.data,  # Include the serialized merchant data
+            role: serializer.data,  # Include the serialized profile data
         }
 
         return Response(response_data, status=status.HTTP_201_CREATED)
@@ -50,7 +62,7 @@ def login(request):
         
         user = authenticate(email=email, password=password)
         if user:
-            # Set the merchant as active
+            # Set the user as active
             user.is_active = True
             user.save()
             
@@ -60,16 +72,18 @@ def login(request):
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
             }
-            
-            # Include the merchant's unique_id in the response
-            merchant = Merchant.objects.get(user=user)
-            merchant_serializer = MerchantSerializer(merchant, many=False)
-            merchant_data = merchant_serializer.data
-            merchant_data['unique_id'] = merchant.unique_id  # Add the unique_id to the merchant data
-            
+
+            # Determine the role of the user and fetch the corresponding profile
+            if user.role == 'merchant':
+                profile = Merchant.objects.get(user=user)
+                profile_serializer = MerchantSerializer(profile, many=False)
+            else:
+                profile = Customer.objects.get(user=user)
+                profile_serializer = CustomerSerializer(profile, many=False)
+
             response_data = {
                 'message': 'Login successful',
-                'merchant': merchant_data,
+                'profile': profile_serializer.data,
                 'tokens': tokens,
             }
             return Response(response_data, status=status.HTTP_200_OK)

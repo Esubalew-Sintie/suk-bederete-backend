@@ -5,6 +5,8 @@ from shop.models import Shop
 from merchant.models import Merchant
 from django.urls import reverse
 from django.db.models import Avg, Count
+from django.utils.text import slugify
+import uuid
 
 # Create your models here.
 
@@ -24,9 +26,9 @@ class ReviewRating(models.Model):
     
 class Product(models.Model):
     name = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=200, unique=True,blank=True)
+    slug = models.SlugField(max_length=200, unique=True, blank=True)
     productHolder = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name='products', to_field='unique_id')
-    image = models.ImageField(upload_to='products/',blank=True)
+    image = models.ImageField(upload_to='products/', blank=True)
     stock = models.IntegerField()
     is_available = models.BooleanField(default=True)
     category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE, related_name='products')
@@ -36,7 +38,7 @@ class Product(models.Model):
     modified_date = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} - {self.productHolder}"
 
     def averageReview(self):
         reviews = ReviewRating.objects.filter(product=self, status=True).aggregate(average=Avg('rating'))
@@ -51,6 +53,13 @@ class Product(models.Model):
         if reviews['count'] is not None:
             count = int(reviews['count'])
         return count
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.name)
+            unique_slug = f"{base_slug}-{uuid.uuid4().hex[:8]}"
+            self.slug = unique_slug
+        super(Product, self).save(*args, **kwargs)
 
 class VariationManager(models.Manager):
     def colors(self):

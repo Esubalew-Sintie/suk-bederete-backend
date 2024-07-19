@@ -28,33 +28,21 @@ class MerchantUpdateView(APIView):
     def patch(self, request, unique_id, format=None):
         serializer = None
         print("Request data:", request.data)
-        uid = request.data.get('uid', None)
-        print("UID:", uid)
-
         try:
-            if uid:
-                user = Account.objects.get(pk=uid)
-                print("User found:", user)
-                user.role = "merchant"
-                user.save()
-                print("User role updated to merchant")
+            # Check if a Merchant instance already exists for the user
+            merchant = Merchant.objects.get(unique_id=unique_id)
+            print("Merchant found:", merchant)
+            # Update the existing Merchant instance
+            serializer = MerchantSerializer(merchant, data=request.data, partial=True)
+            print("Serializer initialized for existing merchant")
+        except Merchant.DoesNotExist:
+            # Create a new Merchant instance
+            print("Merchant does not exist, creating a new one")
+            merchant = Merchant(unique_id=unique_id)
+            serializer = MerchantSerializer(merchant, data=request.data, partial=True)
+            print("Serializer initialized for new merchant")
 
-                try:
-                    # Check if a Merchant instance already exists for the user
-                    merchant = Merchant.objects.get(user=user)
-                    print("Merchant found:", merchant)
-                    # Update the existing Merchant instance
-                    serializer = MerchantSerializer(merchant, data=request.data, partial=True)
-                    print("Serializer initialized for existing merchant")
-                except Merchant.DoesNotExist:
-                    # Create a new Merchant instance
-                    print("Merchant does not exist, creating a new one")
-                    merchant = Merchant(user=user)
-                    serializer = MerchantSerializer(merchant, data=request.data, partial=True)
-                    print("Serializer initialized for new merchant")
-        except Account.DoesNotExist:
-            print("User not found")
-            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+            
 
         if serializer:
             print("Serializer before validation:", serializer)
@@ -79,6 +67,7 @@ def register(request):
         password = request.data.get('password')
         role = request.data.get('role')
         print(role, email, password)
+
         if not email or not password or not role:
             print("Email, password, and role are required.")
             return Response({"error": "Email, password, and role are required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -90,60 +79,35 @@ def register(request):
         # Check if a user with the given email already exists
         user = Account.objects.filter(email=email).first()
 
+        if not user:
+            # Create the Account instance if the user does not exist
+            user = Account.objects.create_user(email=email, password=password, role=role, is_active=True)
+        else:
+            # If the user already exists, ensure the role matches
+            if user.role != role:
+                return Response({"error": "User role mismatch."}, status=status.HTTP_400_BAD_REQUEST)
+
         refresh = RefreshToken.for_user(user)
         tokens = {
             'refresh': str(refresh),
             'access': str(refresh.access_token),
         }
-        
-        if not user:
-            # Create the Account instance if the user does not exist
-            user = Account.objects.create_user(email=email, password=password, role=role, is_active=True)
-       
+
         if role == 'merchant':
             # Check if a Merchant instance is already created
             if Merchant.objects.filter(user=user).exists():
                 return Response({"error": "Merchant record already exists."}, status=status.HTTP_400_BAD_REQUEST)
             # Create the Merchant instance
-            merchant = Merchant.objects.create(user=user, )
+            merchant = Merchant.objects.create(user=user)
             # Serialize the merchant instance
             serializer = MerchantSerializer(merchant, many=False)
-        else:
-            # Check if a Customer instance is already created
-            if Customer.objects.filter(user=user).exists():
-                return Response({"error": "Customer record already exists."}, status=status.HTTP_400_BAD_REQUEST)
-            # Create the Customer instance
-            client = Customer.objects.create(user=user)
-            # Serialize the client instance
-            serializer = CustomerSerializer(client, many=False)
-
-            if role == 'merchant':
-                # Fetch the Merchant instance created by the signal
-                merchant = Merchant.objects.get(user=user)
-                serializer = MerchantSerializer(merchant, many=False)
-                response_data = {
-                    'message': 'Merchant registered successfully',
-                    'email': email,
-                    'tokens': tokens,
-                    'merchant': serializer.data,
-                }
-            else:
-                # Fetch the Customer instance created by the signal
-                customer = Customer.objects.get(user=user)
-                serializer = CustomerSerializer(customer, many=False)
-                response_data = {
-                    'message': 'Customer registered successfully',
-                    'email': email,
-                    'tokens': tokens,
-                    'customer': serializer.data,
-                }
-
-        response_data = {
-            'message': f'{role.capitalize()} registered successfully',
-            'email': email,
-            'tokens': tokens,
-            "data": serializer.data,  # Include the serialized profile data
-        }
+            response_data = {
+                'message': 'Merchant registered successfully',
+                'email': email,
+                'tokens': tokens,
+                'merchant': serializer.data,
+            }
+       
 
         return Response(response_data, status=status.HTTP_201_CREATED)
 

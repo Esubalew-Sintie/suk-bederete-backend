@@ -37,7 +37,7 @@ class VerifyTokenView(APIView):
     def post(self, request, *args, **kwargs):
         token = request.data.get('token')
         refresh = request.data.get('refresh')
-        print(token['value'])
+        print(token)
 
         try:
             # Manually verify the token

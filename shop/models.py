@@ -21,7 +21,7 @@ class CustomizedPage(models.Model):
     js = models.TextField()
 
     def __str__(self):
-        return f"{self.customized_template.original_template.name} - {self.name}"
+        return f"{self.customized_template.original_template.name} - {self.name} - {self.customized_template.modifiedby.user.email}"
 
 class Shop(models.Model):
     name = models.CharField(max_length=200)

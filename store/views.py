@@ -6,10 +6,11 @@ from merchant.models import Merchant
 from category.models import ProductCategory
 from .serializers import ProductSerializer
 from rest_framework.parsers import MultiPartParser, JSONParser
-
+import time
 from rest_framework.pagination import PageNumberPagination
 import random
 import logging
+from django.utils.text import slugify
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -55,7 +56,12 @@ class ProductManagementView(APIView):
                     logger.warning(f"Failed to find or create category for product: {category_name}")
                 product_data['category'] = category.id
                 product_data['productHolder'] = merchantId
-                product_data['slug'] = category_name
+
+                # Generate a unique slug
+                base_slug = slugify(category_name)
+                unique_slug = f"{base_slug}-{int(time.time())}"
+                product_data['slug'] = unique_slug
+
                 # Adjusting the serializer initialization to pass the category object directly
                 product_serializer = ProductSerializer(data=product_data)
                 if product_serializer.is_valid():

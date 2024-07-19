@@ -11,14 +11,14 @@ class Order(models.Model):
         ('Shipped', 'Shipped'),
         ('Delivered', 'Delivered'),
     ]
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, to_field='unique_id', on_delete=models.CASCADE)
     merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     order_status = models.CharField(
         max_length=20,
         choices=ORDER_STATUS_CHOICES,
         default='Pending',  # This should match one of the values in the choices
-    )   
+    )
     order_items = models.ManyToManyField('OrderItem', related_name='orders')
     payment_status = models.CharField(max_length=40)
     payment_method = models.CharField(max_length=50)
@@ -30,6 +30,7 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order {self.id} by {self.customer.user.email} for {self.merchant.user.email}"
+
 
 class ShippingOption(models.Model):
     name = models.CharField(max_length=100)

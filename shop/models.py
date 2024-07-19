@@ -63,7 +63,6 @@ class ShopRating(models.Model):
     def __str__(self):
         return f"{self.shop.name} - {self.user.email} - {self.rating}"
    
-   
 class Screenshot(models.Model):
     image = models.ImageField(upload_to='images/screenshots/')
     caption = models.CharField(max_length=255, blank=True)

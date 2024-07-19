@@ -9,6 +9,9 @@ from account.models import Account
 from rest_framework_simplejwt.tokens import RefreshToken
 from customer.models import Customer
 from customer.serializer import CustomerSerializer
+import logging
+
+logger = logging.getLogger(__name__)
 
 @api_view(['POST'])
 def register(request):
@@ -20,38 +23,47 @@ def register(request):
         if not email or not password or not role:
             return Response({"error": "Email, password, and role are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if role not in ['merchant', 'client']:
-            return Response({"error": "Invalid role. Role must be 'merchant' or 'client'."}, status=status.HTTP_400_BAD_REQUEST)
+        if role not in ['merchant', 'customer']:
+            return Response({"error": "Invalid role. Role must be 'merchant' or 'customer'."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create the Account instance
-        user = Account.objects.create_user(email=email, password=password, role=role, is_active=True)
+        try:
+            # Create the Account instance
+            user = Account.objects.create_user(email=email, password=password, role=role, is_active=True)
+            logger.debug(f"Created user: {user.email}")
 
-        if role == 'merchant':
-            # Create the Merchant instance
-            merchant = Merchant.objects.create(user=user, bank_account_number="")
-            # Serialize the merchant instance
-            serializer = MerchantSerializer(merchant, many=False)
-        else:
-            # Create the Client instance
-            client = Customer.objects.create(user=user)
-            # Serialize the client instance
-            serializer = CustomerSerializer(client, many=False)
+            # Generate refresh and access tokens
+            refresh = RefreshToken.for_user(user)
+            tokens = {
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }
 
-        # Generate refresh and access tokens
-        refresh = RefreshToken.for_user(user)
-        tokens = {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }
+            if role == 'merchant':
+                # Fetch the Merchant instance created by the signal
+                merchant = Merchant.objects.get(user=user)
+                serializer = MerchantSerializer(merchant, many=False)
+                response_data = {
+                    'message': 'Merchant registered successfully',
+                    'email': email,
+                    'tokens': tokens,
+                    'merchant': serializer.data,
+                }
+            else:
+                # Fetch the Customer instance created by the signal
+                customer = Customer.objects.get(user=user)
+                serializer = CustomerSerializer(customer, many=False)
+                response_data = {
+                    'message': 'Customer registered successfully',
+                    'email': email,
+                    'tokens': tokens,
+                    'customer': serializer.data,
+                }
 
-        response_data = {
-            'message': f'{role.capitalize()} registered successfully',
-            'email': email,
-            'tokens': tokens,
-            role: serializer.data,  # Include the serialized profile data
-        }
+            return Response(response_data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"Error during registration: {e}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response(response_data, status=status.HTTP_201_CREATED)
 @api_view(['POST'])
 def login(request):
     if request.method == 'POST':

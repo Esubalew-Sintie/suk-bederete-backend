@@ -1,5 +1,4 @@
 from django.db import models
-from account.models import Account
 from django.conf import settings
 import uuid
 # Create your models here.

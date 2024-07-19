@@ -1,11 +1,11 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from.models import Product
+from .models import Product
 from merchant.models import Merchant
 from category.models import ProductCategory
-from.serializers import ProductSerializer
-from rest_framework.parsers import  MultiPartParser
+from .serializers import ProductSerializer
+from rest_framework.parsers import MultiPartParser, JSONParser
 
 from rest_framework.pagination import PageNumberPagination
 import random
@@ -22,59 +22,57 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 class ProductManagementView(APIView):
-   parser_classes = [MultiPartParser]  # Use MultiPartParser for file uploads
+    parser_classes = [MultiPartParser, JSONParser]  # Use MultiPartParser for file uploads and JSONParser for JSON data
 
-   def post(self, request, *args, **kwargs):
-    try:
-        products_data = request.data.get('products', [])
-        merchantId = request.data.get('merchantId')
+    def post(self, request, *args, **kwargs):
         try:
-            merchant = Merchant.objects.get(unique_id=merchantId)
-        except Merchant.DoesNotExist:
-            return Response({"error": "Merchant not found"}, status=status.HTTP_404_NOT_FOUND)
+            products_data = request.data.get('products', [])
+            merchantId = request.data.get('merchantId')
+            try:
+                merchant = Merchant.objects.get(unique_id=merchantId)
+            except Merchant.DoesNotExist:
+                return Response({"error": "Merchant not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        if not products_data:
-            return Response({"error": "No products data provided"}, status=status.HTTP_400_BAD_REQUEST)
+            if not products_data:
+                return Response({"error": "No products data provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-        validated_products = []
+            validated_products = []
 
-        for product_data in products_data:
-            category_name = product_data.get('category')
-            image = None
-            if 'image' in request.FILES:
-                image = request.FILES['image']
-                product_data['image'] = image
+            for product_data in products_data:
+                category_name = product_data.get('category')
+                image = None
+                if 'image' in request.FILES:
+                    image = request.FILES['image']
+                    product_data['image'] = image
 
-            if not category_name or not merchant:
-                logger.warning(f"Missing required data for product: {category_name} && {merchantId}")
-                continue
+                if not category_name or not merchant:
+                    logger.warning(f"Missing required data for product: {category_name} && {merchantId}")
+                    continue
 
-            # Attempt to get the category based on slug and description
-            category, created = ProductCategory.objects.get_or_create(catagory_name=category_name)
-            if not category:
-                logger.warning(f"Failed to find or create category for product: {category_name}")
-            product_data['category'] = category.id
-            product_data['productHolder'] = merchantId
-            product_data['slug'] = category_name
-                        # Adjusting the serializer initialization to pass the category object directly
-            product_serializer = ProductSerializer(data=product_data)
-            if product_serializer.is_valid():
-                product = product_serializer.save()
-                validated_products.append(product)
-            else:
-                logger.error(f"Validation error for product: {category.id}  {merchantId} && {product_serializer.errors}")
+                # Attempt to get the category based on slug and description
+                category, created = ProductCategory.objects.get_or_create(catagory_name=category_name)
+                if not category:
+                    logger.warning(f"Failed to find or create category for product: {category_name}")
+                product_data['category'] = category.id
+                product_data['productHolder'] = merchantId
+                product_data['slug'] = category_name
+                # Adjusting the serializer initialization to pass the category object directly
+                product_serializer = ProductSerializer(data=product_data)
+                if product_serializer.is_valid():
+                    product = product_serializer.save()
+                    validated_products.append(product)
+                else:
+                    logger.error(f"Validation error for product: {category.id}  {merchantId} && {product_serializer.errors}")
 
-        return Response({
-            "message": f"{len(validated_products)} products created successfully",
-            "products": ProductSerializer(validated_products, many=True).data,
-        }, status=status.HTTP_201_CREATED)
-    except Exception as e:
-        logger.exception("An error occurred while processing the request.")
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-   
-    # creating patch view for updating products coming as a list
-   def patch(self, request, *args, **kwargs):
+            return Response({
+                "message": f"{len(validated_products)} products created successfully",
+                "products": ProductSerializer(validated_products, many=True).data,
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.exception("An error occurred while processing the request.")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, *args, **kwargs):
         try:
             products_data = request.data.get('products', [])
             merchantId = request.data.get('merchantId')

@@ -69,6 +69,13 @@ class Account(AbstractBaseUser, PermissionsMixin):
     def has_module_perms(self, add_label):
         return True
     
+@receiver(post_save, sender=Account)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        if instance.role == 'merchant' and not Merchant.objects.filter(user=instance).exists():
+            Merchant.objects.create(user=instance)
+        elif instance.role == 'customer' and not Customer.objects.filter(user=instance).exists():
+            Customer.objects.create(user=instance)
 # @receiver(post_save, sender=Account)
 # def create_user_profile(sender, instance, created, **kwargs):
 #     if created:

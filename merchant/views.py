@@ -11,6 +11,9 @@ from account.models import Account
 from rest_framework_simplejwt.tokens import RefreshToken
 from customer.models import Customer
 from customer.serializer import CustomerSerializer
+import logging
+
+logger = logging.getLogger(__name__)
 # views.py
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
@@ -86,6 +89,12 @@ def register(request):
 
         # Check if a user with the given email already exists
         user = Account.objects.filter(email=email).first()
+
+        refresh = RefreshToken.for_user(user)
+        tokens = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
         
         if not user:
             # Create the Account instance if the user does not exist
@@ -108,12 +117,26 @@ def register(request):
             # Serialize the client instance
             serializer = CustomerSerializer(client, many=False)
 
-        # Generate refresh and access tokens
-        refresh = RefreshToken.for_user(user)
-        tokens = {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }
+            if role == 'merchant':
+                # Fetch the Merchant instance created by the signal
+                merchant = Merchant.objects.get(user=user)
+                serializer = MerchantSerializer(merchant, many=False)
+                response_data = {
+                    'message': 'Merchant registered successfully',
+                    'email': email,
+                    'tokens': tokens,
+                    'merchant': serializer.data,
+                }
+            else:
+                # Fetch the Customer instance created by the signal
+                customer = Customer.objects.get(user=user)
+                serializer = CustomerSerializer(customer, many=False)
+                response_data = {
+                    'message': 'Customer registered successfully',
+                    'email': email,
+                    'tokens': tokens,
+                    'customer': serializer.data,
+                }
 
         response_data = {
             'message': f'{role.capitalize()} registered successfully',

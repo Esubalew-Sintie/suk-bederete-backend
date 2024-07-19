@@ -76,3 +76,10 @@ def create_user_profile(sender, instance, created, **kwargs):
             Merchant.objects.create(user=instance)
         elif instance.role == 'customer' and not Customer.objects.filter(user=instance).exists():
             Customer.objects.create(user=instance)
+# @receiver(post_save, sender=Account)
+# def create_user_profile(sender, instance, created, **kwargs):
+#     if created:
+#         if instance.role == 'merchant':
+#             Merchant.objects.create(user=instance)
+#         elif instance.role == 'client':
+#             Customer.objects.create(user=instance)

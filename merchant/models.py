@@ -1,4 +1,5 @@
 from django.db import models
+# from account.models import Account
 from django.conf import settings
 import uuid
 # Create your models here.
@@ -15,6 +16,8 @@ class Merchant(models.Model):
         ('electronics', 'Electronics Shop'),
         ('household', 'Household Shop'),
         ('clothing', 'Clothing Shop'),
+        ('Jewelry_cosmetics', 'Jewelry and cosmetics Shop'),
+        ('Shoes', 'Shoes Shop'),
         # Add other options as needed
     ], blank=True, null=True)
 

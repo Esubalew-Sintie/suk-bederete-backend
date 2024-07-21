@@ -1,6 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.views import View
+from django.http import JsonResponse
 from .models import Product
 from merchant.models import Merchant
 from category.models import ProductCategory
@@ -8,9 +10,16 @@ from .serializers import ProductSerializer
 from rest_framework.parsers import MultiPartParser, JSONParser
 import time
 from rest_framework.pagination import PageNumberPagination
+from django.shortcuts import get_object_or_404
+import json
+import time
+from django.http import StreamingHttpResponse
+from django.core.serializers.json import DjangoJSONEncoder
 import random
 import logging
 from django.utils.text import slugify
+from django.db.models import Sum  # Import Sum from django.db.models
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -119,35 +128,97 @@ class ProductManagementView(APIView):
         except Exception as e:
             logger.exception("An error occurred while processing the request.")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+        
+        
+        
 class GetProducts(APIView):
     def get(self, request, merchant_id, *args, **kwargs):
         category_slug = request.query_params.get('category', None)
         
-        # Initialize the response data
         response_data = {}
         
-        # Get random 4 products for 'featured' category added by the merchant
-        all_products = list(Product.objects.filter(productHolder=merchant_id))  # Corrected here
-        featured_products = random.sample(all_products, min(4, len(all_products)))
+        merchant = get_object_or_404(Merchant, unique_id=merchant_id)
         
-        # Get latest 8 products for 'new_arrival' category added by the merchant
-        new_arrival_products = Product.objects.filter(productHolder=merchant_id).order_by('-created_at')[:8]  # And here
+        all_products = list(Product.objects.filter(productHolder=merchant).order_by('id'))
         
-        # Get all products with pagination for 'all_products' category added by the merchant
+        try:
+            featured_products = random.sample(all_products, min(4, len(all_products)))
+        except ValueError:
+            featured_products = all_products
+        
+        new_arrival_products = Product.objects.filter(productHolder=merchant).order_by('-created_at')[:8]
+        
         paginator = PageNumberPagination()
         paginator.page_size = 10
-        result_page = paginator.paginate_queryset(Product.objects.filter(productHolder=merchant_id), request)  # And here
+        result_page = paginator.paginate_queryset(Product.objects.filter(productHolder=merchant).order_by('id'), request)
         all_products_paginated = ProductSerializer(result_page, many=True).data
         
-        # Add serialized products to the response data
         response_data['featured'] = ProductSerializer(featured_products, many=True).data
         response_data['new_arrival'] = ProductSerializer(new_arrival_products, many=True).data
         response_data['all_products'] = all_products_paginated
         
-        # Handle category filtering if provided
         if category_slug:
-            filtered_products = Product.objects.filter(category__slug=category_slug, productHolder=merchant_id)  # And here
+            filtered_products = Product.objects.filter(category__slug=category_slug, productHolder=merchant).order_by('id')
             response_data['filtered'] = ProductSerializer(filtered_products, many=True).data
         
         return Response(response_data, status=status.HTTP_200_OK)
+    
+    
+    
+    
+def check_stock_levels(request, merchant_id):
+    products = Product.objects.filter(productHolder=merchant_id)
+    out_of_stock_products = [product for product in products if product.stock == 0]
+    response_data = {
+        'out_of_stock_products': [
+            {'id': product.id, 'name': product.name, 'stock': product.stock}
+            for product in out_of_stock_products
+        ]
+    }
+    return JsonResponse(response_data)
+
+def event_stream(merchant_id):
+    initial_data = list(Product.objects.filter(productHolder=merchant_id, stock=0))
+
+    while True:
+        current_data = list(Product.objects.filter(productHolder=merchant_id, stock=0))
+        new_out_of_stock = [product for product in current_data if product not in initial_data]
+
+        if new_out_of_stock:
+            data = json.dumps([{
+                'id': product.id,
+                'name': product.name,
+                'stock': product.stock,
+                'message': f"{product.name} is out of stock."
+            } for product in new_out_of_stock], cls=DjangoJSONEncoder)
+            yield f"data: {data}\n\n"
+
+        initial_data = current_data
+        time.sleep(5)
+
+class ProductStockStreamView(View):
+    def get(self, request, merchant_id):
+        merchant = get_object_or_404(Merchant, unique_id=merchant_id)
+        response = StreamingHttpResponse(event_stream(merchant.unique_id))
+        response['Content-Type'] = 'text/event-stream'
+        return response
+    
+    
+    
+    
+# View to check total stock levels
+class TotalStockView(View):
+    def get(self, request, merchant_id):
+        merchant = get_object_or_404(Merchant, unique_id=merchant_id)
+        total_stock = Product.objects.filter(productHolder=merchant).aggregate(total_stock=Sum('stock'))['total_stock']
+        if total_stock is None:
+            total_stock = 0  # In case there are no products or all have zero stock
+        return JsonResponse({'total_stock': total_stock})
+
+# View to get total categories
+class TotalCategoriesView(View):
+    def get(self, request, merchant_id):
+        merchant = get_object_or_404(Merchant, unique_id=merchant_id)
+        total_categories = Product.objects.filter(productHolder=merchant).values('category').distinct().count()
+        return JsonResponse({'total_categories': total_categories})
+    

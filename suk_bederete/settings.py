@@ -160,23 +160,11 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 
-# settings.py
 
-# Email Backend
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-
-# SMTP Server Configuration
-EMAIL_HOST = 'smtp.gmail.com'  # For Gmail. Replace with your provider's SMTP server.
-EMAIL_PORT = 587  # Common port for TLS
-EMAIL_USE_TLS = True  # Use TLS for secure connection
-EMAIL_USE_SSL = False  # Ensure SSL is disabled if TLS is enabled
-
-# Email Authentication
-EMAIL_HOST_USER = 'esubalewsintie28@gmail.com'  # Your email address
-EMAIL_HOST_PASSWORD = 'tilahunsintie'  # Your email password
 
 # Default "From" email address
 DEFAULT_FROM_EMAIL = 'esubalewsintie28@gmail.com'
+
 
 
 # Database

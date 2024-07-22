@@ -17,7 +17,7 @@ class Customer(models.Model):
     phone_number = models.CharField("Phone Number", max_length=15, blank=True, null=True)
 
     def __str__(self):
-        return self.user.email
+        return f"{self.user.email}-{self.user.role}"
 
     class Meta:
         verbose_name = "Customer"

@@ -10,6 +10,8 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 import json
 import qrcode
+from .serializers import OrderSerializerForMerchant
+
 from io import BytesIO
 from rest_framework import status
 
@@ -20,7 +22,9 @@ from rest_framework.generics import UpdateAPIView, DestroyAPIView
 from rest_framework.mixins import ListModelMixin
 from rest_framework.generics import  CreateAPIView
 from.models import Order  
-from merchant.models import Merchant  
+from merchant.models import Merchant 
+from customer.models import Customer  
+ 
 from.serializers import OrderSerializer
 
 # class OrderUpdateDestroyView(UpdateAPIView, DestroyAPIView, ListModelMixin):
@@ -107,6 +111,28 @@ class OrderCreateView(CreateAPIView):
 
         return Response(order_info, status=status.HTTP_201_CREATED)
 
+class CustomerOrdersView(APIView):
+    def get(self, request, customer_id, format=None):
+        try:
+            # Retrieve the customer based on the unique ID
+            customer = Customer.objects.get(unique_id=customer_id)
+            
+            # Filter orders by the customer
+            orders = Order.objects.filter(customer=customer)
+            
+            # Serialize the orders
+            serializer = OrderSerializer(orders, many=True)
+            
+            order_infos = serializer.data
+
+
+            return Response(order_infos)
+        except Customer.DoesNotExist:
+            return Response({"error": "Customer not found."}, status=404)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+
 
 
 class MerchantOrdersView(APIView):
@@ -115,60 +141,19 @@ class MerchantOrdersView(APIView):
             # Retrieve the merchant based on the unique ID
             merchant = Merchant.objects.get(unique_id=merchant_id)
             
-            # Validate the merchant exists
-            if not merchant:
-                return Response({"error": "Merchant not found."}, status=404)
-            
             # Filter orders by the merchant
             orders = Order.objects.filter(merchant=merchant)
             
-            # Serialize the orders
-            serializer = OrderSerializer(orders, many=True)
+            # Serialize the orders using the merchant-facing serializer
+            serializer = OrderSerializerForMerchant(orders, many=True)
             
-            order_infos = []
-            for order in serializer.data:
-                customer_data = {
-                    'email': order['customer']['user']['email'],
-                    'first_name': order['customer']['first_name'],
-                    'last_name': order['customer']['last_name'],
-                    'address1': order['customer']['address1'],
-                    'address2': order['customer']['address2'],
-                    'zip_code': order['customer']['zip_code'],
-                    'city': order['customer']['city'],
-                    'state': order['customer']['state'],
-                    'country': order['customer']['country'],
-                    'phone_number': order['customer']['phone_number'],
-                }
-                
-                shipping_option_data = None
-                if order['shipping_option']:
-                    shipping_option_data = {
-                        'name': order['shipping_option']['name'],
-                        'cost': order['shipping_option']['cost'],
-                        'delivery_time': order['shipping_option']['delivery_time'],
-                    }
-
-                order_info = {
-                    'customer': customer_data,
-                    'total_amount': order['total_amount'],
-                    'order_status': order['order_status'],
-                    'order_items': [{'product': item['product']['name'], 'quantity': item['quantity_ordered']} for item in order['order_items']],
-                    'payment_status': order['payment_status'],
-                    'payment_method': order['payment_method'],
-                    'shipping_option': shipping_option_data,
-                    'order_date': order['order_date'],
-                }
-                
-                order_infos.append(order_info)
+            order_infos = serializer.data
 
             return Response(order_infos)
         except Merchant.DoesNotExist:
-            # Handle merchant not found
             return Response({"error": "Merchant not found."}, status=404)
         except Exception as e:
-            # Handle other exceptions
             return Response({"error": str(e)}, status=400)
-
 
 
 def compare_with_previous_state(current_orders, initial_data):
@@ -188,13 +173,13 @@ def compare_with_previous_state(current_orders, initial_data):
     return new_or_updated_orders
 
 def event_stream(merchant_id):
-    initial_data = list(Order.objects.filter(merchant_id=merchant_id).order_by("-order_date"))
-    
+    initial_data = list(Order.objects.filter(merchant=merchant_id).order_by("-order_date"))
+
     while True:
-        current_orders = list(Order.objects.filter(merchant_id=merchant_id).order_by("-order_date"))
+        current_orders = list(Order.objects.filter(merchant=merchant_id).order_by("-order_date"))
         new_or_updated_orders = compare_with_previous_state(current_orders, initial_data)
         initial_data = current_orders
-        
+
         if new_or_updated_orders:
             data = json.dumps([{
                 'customer': {
@@ -209,21 +194,23 @@ def event_stream(merchant_id):
                     'country': order.customer.country,
                     'phone_number': order.customer.phone_number,
                 },
-                'total_amount': order.total_amount,
+                'total_amount': str(order.total_amount),  # Ensure total_amount is string
                 'order_status': order.order_status,
                 'order_items': [{'product': item.product.name, 'quantity': item.quantity_ordered} for item in order.order_items.all()],
                 'payment_status': order.payment_status,
                 'payment_method': order.payment_method,
                 'shipping_option': {
                     'name': order.shipping_option.name if order.shipping_option else None,
-                    'cost': order.shipping_option.cost if order.shipping_option else None,
-                    'delivery_time': order.shipping_option.delivery_time.seconds // 60 if order.shipping_option else None,
+                    'cost': str(order.shipping_option.cost) if order.shipping_option else None,
+                    'delivery_time': order.shipping_option.delivery_time.total_seconds() // 60 if order.shipping_option else None,
                 },
                 'order_date': order.order_date.isoformat(),
             } for order in new_or_updated_orders], cls=DjangoJSONEncoder)
             yield f"data: {data}\n\n"
-        
+
         time.sleep(1)
+
+
 
 
 class OrderStreamView(View):

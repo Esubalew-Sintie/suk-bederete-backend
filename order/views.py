@@ -84,6 +84,7 @@ class OrderCreateView(CreateAPIView):
             },
             'total_amount': order.total_amount,
             'order_status': order.order_status,
+            "barcode_image": order.barcode_image,
             'order_items': [{'product': item.product.name, 'quantity': item.quantity_ordered} for item in order.order_items.all()],
             'payment_status': order.payment_status,
             'payment_method': order.payment_method,

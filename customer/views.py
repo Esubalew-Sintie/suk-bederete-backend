@@ -30,6 +30,7 @@ def register(request):
         if not user:
             # Create the Account instance if the user does not exist
             user = Account.objects.create_user(email=email, password=password, role=role, is_active=True)
+            print(user,role)
         else:
             # If the user already exists, ensure the role matches
             if user.role != role:

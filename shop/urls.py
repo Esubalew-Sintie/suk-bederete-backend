@@ -13,6 +13,8 @@ urlpatterns = [
     path('getshopbymerchant/<uuid:merchant_id>/', views.get_shop_by_merchant, name='get_shop_by_merchant'),
     path('getshops/', views.get_shops, name='get_shops'),
     path('publishshop/', views.create_shop, name='publish_shop'),
+   path('update-preview-image/<uuid:merchant_id>/', views.UpdateShopPreviewImageView.as_view(), name='update_priview_image_shop_by_merchant'),
+
     
 
     # path('create_shop/', views.create_shop, name='create_shop'),

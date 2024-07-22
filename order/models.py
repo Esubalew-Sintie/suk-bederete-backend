@@ -4,6 +4,7 @@ from django.utils import timezone
 from merchant.models import Merchant
 from store.models import Product  # Corrected to match the model name
 from customer.models import Customer  # Corrected to match the model name
+import uuid
 
 class Order(models.Model):
     ORDER_STATUS_CHOICES = [
@@ -19,8 +20,10 @@ class Order(models.Model):
         choices=ORDER_STATUS_CHOICES,
         default='Pending',  # This should match one of the values in the choices
     )
+    unique_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, primary_key=True) 
     order_items = models.ManyToManyField('OrderItem', related_name='orders')
     payment_status = models.CharField(max_length=40)
+    barcode_image = models.ImageField(upload_to="images/bar-code/", blank=True, null=True)
     payment_method = models.CharField(max_length=50)
     shipping_option = models.ForeignKey('ShippingOption', on_delete=models.SET_NULL, null=True, blank=True)
     order_date = models.DateTimeField(default=timezone.now)

@@ -110,7 +110,6 @@ def register(request):
         email = request.data.get('email')
         password = request.data.get('password')
         role = request.data.get('role')
-        print(role, email, password)
 
         if not email or not password or not role:
             print("Email, password, and role are required.")
@@ -140,8 +139,10 @@ def register(request):
         if role == 'merchant':
             # Check if a Merchant instance is already created
             if Merchant.objects.filter(user=user).exists():
+                print("Merchant record already exists.")
                 return Response({"error": "Merchant record already exists."}, status=status.HTTP_400_BAD_REQUEST)
             # Create the Merchant instance
+            print("merchant creates")
             merchant = Merchant.objects.create(user=user)
             # Serialize the merchant instance
             serializer = MerchantSerializer(merchant, many=False)
@@ -149,7 +150,7 @@ def register(request):
                 'message': 'Merchant registered successfully',
                 'email': email,
                 'tokens': tokens,
-                'merchant': serializer.data,
+                'data': serializer.data,
             }
        
 

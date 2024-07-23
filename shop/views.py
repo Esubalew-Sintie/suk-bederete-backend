@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404
 from merchant.models import Merchant
 import logging
 from rest_framework.views import APIView
+from rest_framework import generics
+
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from.models import Screenshot
@@ -377,3 +379,19 @@ def suspend_shop(request, unique_id):
             shop.unsuspend()
         return Response({'status': 'success'}, status=status.HTTP_200_OK)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ShopListView(generics.ListAPIView):
+    serializer_class = ShopSerializer
+
+    def get_queryset(self):
+        # Fetch all shops and prefetch related data
+        shops = Shop.objects.all().prefetch_related('owner')
+        for shop in shops:
+            shop.check_payment_status()
+            shop.save()  # Ensure the updated status is saved
+        return shops
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)

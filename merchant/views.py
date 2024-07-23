@@ -115,9 +115,9 @@ def register(request):
             print("Email, password, and role are required.")
             return Response({"error": "Email, password, and role are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if role not in ['merchant', 'client']:
-            print("Invalid role. Role must be 'merchant' or 'client'.")
-            return Response({"error": "Invalid role. Role must be 'merchant' or 'client'."}, status=status.HTTP_400_BAD_REQUEST)
+        if role != 'merchant':
+            print("Invalid role. Role must be 'merchant'.")
+            return Response({"error": "Invalid role. Role must be 'merchant'."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if a user with the given email already exists
         user = Account.objects.filter(email=email).first()
@@ -136,23 +136,20 @@ def register(request):
             'access': str(refresh.access_token),
         }
 
-        if role == 'merchant':
-            # Check if a Merchant instance is already created
-            if Merchant.objects.filter(user=user).exists():
-                print("Merchant record already exists.")
-                return Response({"error": "Merchant record already exists."}, status=status.HTTP_400_BAD_REQUEST)
-            # Create the Merchant instance
-            print("merchant creates")
-            merchant = Merchant.objects.create(user=user)
-            # Serialize the merchant instance
-            serializer = MerchantSerializer(merchant, many=False)
-            response_data = {
-                'message': 'Merchant registered successfully',
-                'email': email,
-                'tokens': tokens,
-                'data': serializer.data,
-            }
-       
+        # Check if a Merchant instance is already created
+        if Merchant.objects.filter(user=user).exists():
+            return Response({"error": "Merchant record already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create the Merchant instance
+        merchant = Merchant.objects.create(user=user)
+        # Serialize the merchant instance
+        serializer = MerchantSerializer(merchant, many=False)
+        response_data = {
+            'message': 'Merchant registered successfully',
+            'email': email,
+            'tokens': tokens,
+            'merchant': serializer.data,
+        }
 
         return Response(response_data, status=status.HTTP_201_CREATED)
 

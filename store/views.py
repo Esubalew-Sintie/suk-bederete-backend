@@ -7,7 +7,7 @@ from .models import Product
 from merchant.models import Merchant
 from category.models import ProductCategory
 from .serializers import ProductSerializer
-from rest_framework.parsers import MultiPartParser, JSONParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 import time
 from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
@@ -32,16 +32,38 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 class ProductManagementView(APIView):
-    parser_classes = [MultiPartParser, JSONParser]  # Use MultiPartParser for file uploads and JSONParser for JSON data
+    parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, *args, **kwargs):
+        logger.debug(f"Received data: {request.data}")
+        logger.debug(f"Received files: {request.FILES}")
+
         try:
-            products_data = request.data.get('products', [])
+            # Extract merchant ID
             merchantId = request.data.get('merchantId')
+            logger.debug(f"Merchant ID: {merchantId}")
+
             try:
                 merchant = Merchant.objects.get(unique_id=merchantId)
             except Merchant.DoesNotExist:
                 return Response({"error": "Merchant not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            # Extract products
+            products_data = []
+            i = 0
+            while f'products[{i}][name]' in request.data:
+                product_data = {
+                    'name': request.data.get(f'products[{i}][name]'),
+                    'category': request.data.get(f'products[{i}][category]'),
+                    'price': request.data.get(f'products[{i}][price]'),
+                    'stock': request.data.get(f'products[{i}][stock]'),
+                    'description': request.data.get(f'products[{i}][description]'),
+                    'image': request.FILES.get(f'products[{i}][image]')
+                }
+                products_data.append(product_data)
+                i += 1
+
+            logger.debug(f"Products data: {products_data}")
 
             if not products_data:
                 return Response({"error": "No products data provided"}, status=status.HTTP_400_BAD_REQUEST)
@@ -50,28 +72,20 @@ class ProductManagementView(APIView):
 
             for product_data in products_data:
                 category_name = product_data.get('category')
-                image = None
-                if 'image' in request.FILES:
-                    image = request.FILES['image']
-                    product_data['image'] = image
-
+                image = product_data.get('image')
+                
                 if not category_name or not merchant:
                     logger.warning(f"Missing required data for product: {category_name} && {merchantId}")
                     continue
 
-                # Attempt to get the category based on slug and description
                 category, created = ProductCategory.objects.get_or_create(catagory_name=category_name)
-                if not category:
-                    logger.warning(f"Failed to find or create category for product: {category_name}")
                 product_data['category'] = category.id
                 product_data['productHolder'] = merchantId
 
-                # Generate a unique slug
                 base_slug = slugify(category_name)
                 unique_slug = f"{base_slug}-{int(time.time())}"
                 product_data['slug'] = unique_slug
 
-                # Adjusting the serializer initialization to pass the category object directly
                 product_serializer = ProductSerializer(data=product_data)
                 if product_serializer.is_valid():
                     product = product_serializer.save()

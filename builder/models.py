@@ -7,15 +7,22 @@ class Template(models.Model):
         ('clothing', 'Clothing'),
         ('household', 'Household'),
         # Add more choices as needed
-    ] 
+    ]
+
+    TEMPLATE_TYPE_CHOICES = [
+        ('free', 'Free'),
+        ('premium', 'Premium'),
+    ]
 
     name = models.CharField(max_length=200)
     description = models.TextField()
     preview_image = models.ImageField(upload_to="images/preview/")
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    template_type = models.CharField(max_length=7, choices=TEMPLATE_TYPE_CHOICES, default='free')
 
     def __str__(self):
         return self.name
+
 
 class Page(models.Model):
     name = models.CharField(max_length=200)
@@ -26,6 +33,7 @@ class Page(models.Model):
 
     def __str__(self):
         return f"{self.template.name} - {self.name}"
+
     
 
     

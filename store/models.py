@@ -28,7 +28,7 @@ class Product(models.Model):
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True, blank=True)
     productHolder = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name='products', to_field='unique_id')
-    image = models.ImageField(upload_to='products/', blank=True)
+    image = models.ImageField(upload_to='images/products/', blank=True)
     stock = models.IntegerField()
     is_available = models.BooleanField(default=True)
     category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE, related_name='products')

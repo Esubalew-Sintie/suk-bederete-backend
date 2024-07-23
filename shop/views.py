@@ -331,3 +331,25 @@ def get_shop_by_merchant(request, merchant_id):
     
     serializer = ShopSerializer(shop, many=True)
     return Response(serializer.data)
+
+
+
+class UpdateShopPreviewImageView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def patch(self, request, merchant_id):
+        try:
+            merchant = Merchant.objects.get(unique_id=merchant_id)
+            shop = Shop.objects.get(owner=merchant)
+        except Merchant.DoesNotExist:
+            return Response({'error': 'Merchant not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Shop.DoesNotExist:
+            return Response({'error': 'Shop not found'}, status=status.HTTP_404_NOT_FOUND)
+        print(request.data,"image data")
+        serializer = ShopSerializer(shop, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            print("preview image updated successfully")
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        print("preview image updated failed")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

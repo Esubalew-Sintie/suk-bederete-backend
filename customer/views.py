@@ -13,84 +13,86 @@ def register(request):
     if request.method == 'POST':
         email = request.data.get('email')
         password = request.data.get('password')
-        if not email or not password:
-            return Response({"error": "Email and password are required."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Create the Account instance
-        user = Account.objects.create_user(email=email, password=password, is_active=True)
-        
-        # Extract data from the request
-        name = request.data.get('name', "")
-        address1 = request.data.get('address1', "")
-        address2 = request.data.get('address2', "")
-        zip_code = request.data.get('zip_code', "")
-        city = request.data.get('city', "")
-        state = request.data.get('state', "")
-        country = request.data.get('country', "")
-        phone_number = request.data.get('phone_number', "")
-        
-        # Create the Customer instance with the extracted data
-        customer = Customer.objects.create(
-            user=user,
-            name=name,
-            address1=address1,
-            address2=address2,
-            zip_code=zip_code,
-            city=city,
-            state=state,
-            country=country,
-            phone_number=phone_number
-        )
-        
-        # Serialize the customer instance
-        serializer = CustomerSerializer(customer, many=False)
+        role = request.data.get('role')
+        print(role, email, password)
 
-        # Generate refresh and access tokens
+        if not email or not password or not role:
+            print("Email, password, and role are required.")
+            return Response({"error": "Email, password, and role are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if role not in [ 'client']:
+            print("Invalid role. Role must be 'Customer' or 'client'.")
+            return Response({"error": "Invalid role. Role must be client."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if a user with the given email already exists
+        user = Account.objects.filter(email=email).first()
+
+        if not user:
+            # Create the Account instance if the user does not exist
+            user = Account.objects.create_user(email=email, password=password, role=role, is_active=True)
+            print(user,role)
+        else:
+            # If the user already exists, ensure the role matches
+            if user.role != role:
+                print("User role mismatch")
+                return Response({"error": "User role mismatch."}, status=status.HTTP_400_BAD_REQUEST)
+
         refresh = RefreshToken.for_user(user)
         tokens = {
             'refresh': str(refresh),
             'access': str(refresh.access_token),
         }
-
-        response_data = {
-            'message': 'Customer registered successfully',
-            'email': email,
-            'tokens': tokens,
-            'customer': serializer.data,  # Include the serialized customer data
-        }
+                
+        # Create the Customer instance with the extracted data
+        if role == 'client':
+            # Check if a Customer instance is already created
+            if Customer.objects.filter(user=user).exists():
+                return Response({"error": "Customer record already exists."}, status=status.HTTP_400_BAD_REQUEST)
+            # Create the Customer instance
+            customer = Customer.objects.create(user=user)
+            # Serialize the Customer instance
+            serializer = CustomerSerializer(customer, many=False)
+            response_data = {
+                'message': 'Customer registered successfully',
+                'email': email,
+                'tokens': tokens,
+                'data': serializer.data,
+            }
+       
 
         return Response(response_data, status=status.HTTP_201_CREATED)
 
-# views.py (continued)
 @api_view(['POST'])
 def login(request):
     if request.method == 'POST':
         email = request.data.get('email')
         password = request.data.get('password')
+        
+        print(password,email)
         if not email or not password:
             return Response({"error": "Email and password are required."}, status=status.HTTP_400_BAD_REQUEST)
         
         user = authenticate(email=email, password=password)
         if user:
-            # Set the customer as active
+            # Set the user as active
             user.is_active = True
             user.save()
-            
+            print(user,user.role)
             # Generate refresh and access tokens
             refresh = RefreshToken.for_user(user)
             tokens = {
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
             }
-            
-            # Include the customer's information in the response
-            customer = Customer.objects.get(user=user)
-            customer_serializer = CustomerSerializer(customer, many=False)
-            customer_data = customer_serializer.data
-            
+
+            # Determine the role of the user and fetch the corresponding profile
+            if user.role == 'client':
+                profile = Customer.objects.get(user=user)
+                profile_serializer = CustomerSerializer(profile, many=False)
+
             response_data = {
                 'message': 'Login successful',
-                'customer': customer_data,
+                'data': profile_serializer.data,
                 'tokens': tokens,
             }
             return Response(response_data, status=status.HTTP_200_OK)

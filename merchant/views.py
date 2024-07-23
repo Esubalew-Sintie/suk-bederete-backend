@@ -110,7 +110,6 @@ def register(request):
         email = request.data.get('email')
         password = request.data.get('password')
         role = request.data.get('role')
-        print(role, email, password)
 
         if not email or not password or not role:
             print("Email, password, and role are required.")
@@ -159,6 +158,7 @@ def login(request):
     if request.method == 'POST':
         email = request.data.get('email')
         password = request.data.get('password')
+        
         print(password,email)
         if not email or not password:
             return Response({"error": "Email and password are required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -168,7 +168,7 @@ def login(request):
             # Set the user as active
             user.is_active = True
             user.save()
-            
+            print(user,user.role)
             # Generate refresh and access tokens
             refresh = RefreshToken.for_user(user)
             tokens = {

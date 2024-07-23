@@ -108,8 +108,8 @@ class CustomerList(APIView):
     
 class CustomerListView(APIView):
     def get(self, request, format=None):
-        merchants = Customer.objects.all()
-        serializer = CustomerSerializer(merchants, many=True)
+        customers = Customer.objects.all()
+        serializer = CustomerSerializer(customers, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     
@@ -152,4 +152,12 @@ class CustomerCreate(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+@api_view(['GET'])
+def get_customer(request, unique_id):
+    try:
+        # Fetch the Merchant instance by unique_id
+        customer = Customer.objects.get(unique_id=unique_id)
+        serializer = CustomerSerializer(customer)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Customer.DoesNotExist:
+        return Response({"error": "customer not found."}, status=status.HTTP_404_NOT_FOUND)

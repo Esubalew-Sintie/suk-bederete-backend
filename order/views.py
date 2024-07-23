@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404
 import json
 import qrcode
 from .serializers import OrderSerializerForMerchant
+from rest_framework import generics
 
 from io import BytesIO
 from rest_framework import status
@@ -220,3 +221,7 @@ class OrderStreamView(View):
         response['Content-Type'] = 'text/event-stream'
         return response
 
+
+class OrderListView(generics.ListAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer

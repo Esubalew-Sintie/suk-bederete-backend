@@ -2,8 +2,6 @@ from django.db import models
 from merchant.models import Merchant
 from builder.models import Template
 from account.models import Account
-from django.apps import apps
-from django.db.models import Avg
 import uuid
 from datetime import timedelta
 from django.utils import timezone
@@ -46,10 +44,6 @@ class Shop(models.Model):
 
     def __str__(self):
         return self.name
-    
-    def average_rating(self):
-        average = self.ratings.aggregate(Avg('rating'))['rating__avg']
-        return average if average is not None else 0
 
     def save(self, *args, **kwargs):
         if not self.unique_id:
@@ -89,6 +83,17 @@ class Shop(models.Model):
         self.status = 'paid'
         self.suspense = False
         self.save()
+
+    def check_payment_status(self):
+        """Check and update the payment status and suspense field dynamically."""
+        if timezone.now() >= self.next_payment_due_date:
+            self.status = 'unpaid'
+            self.suspense = True
+        else:
+            self.status = 'paid'
+            self.suspense = False
+        self.save()
+        return self.status, self.suspense
 
 class ShopRating(models.Model):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='ratings')

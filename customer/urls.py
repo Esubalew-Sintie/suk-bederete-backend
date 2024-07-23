@@ -1,5 +1,5 @@
 from django.urls import path
-from.views import CustomerList, CustomerDetail, CustomerUpdate, CustomerDelete, CustomerCreate,register,login,CustomerListView
+from.views import CustomerList, CustomerDetail, CustomerUpdate, CustomerDelete, CustomerCreate,register,login,CustomerListView,get_customer
 
 urlpatterns = [
     path('customer/register/', register, name='customer-register'),
@@ -9,6 +9,7 @@ urlpatterns = [
     path('customers/update/<int:pk>/', CustomerUpdate.as_view(), name='customer-update'),
     path('customers/delete/<int:pk>/', CustomerDelete.as_view(), name='customer-delete'),
     path('customers/create/', CustomerCreate.as_view(), name='customer-crMerchantListVieweate'),
-     path('customers/', CustomerListView.as_view(), name='update_customer'),
+    path('customers/', CustomerListView.as_view(), name='update_customer'),
+    path('customer/<uuid:unique_id>/', get_customer, name='get_merchant'),
 
 ]

@@ -197,3 +197,14 @@ def login(request):
             return Response(response_data, status=status.HTTP_200_OK)
         else:
             return Response({"error": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+@api_view(['GET'])
+def get_merchant(request, unique_id):
+    try:
+        # Fetch the Merchant instance by unique_id
+        merchant = Merchant.objects.get(unique_id=unique_id)
+        serializer = MerchantSerializer(merchant)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Merchant.DoesNotExist:
+        return Response({"error": "Merchant not found."}, status=status.HTTP_404_NOT_FOUND)

@@ -1,15 +1,26 @@
 from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
 from.models import Picture
-
+from merchant.serializer import MerchantSerializer
 from .models import Shop, CustomizedPage, CustomizedTemplate
 from django import forms
 # serializers.py
 from.models import Screenshot
 class ShopSerializer(ModelSerializer):
+    owner = MerchantSerializer(read_only=True)
+    payment_status = serializers.SerializerMethodField()
+
     class Meta:
         model= Shop
         fields =  '__all__' 
+    
+    def get_payment_status(self, obj):
+        # Ensure the payment status is checked and updated
+        obj.check_payment_status()
+        return {
+            'status': obj.status,
+            'suspense': obj.suspense
+        }
 
 class CustomizedTemplateSerializer(ModelSerializer):
     class Meta:

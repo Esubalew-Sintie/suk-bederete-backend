@@ -67,7 +67,12 @@ class CustomerUpdateView(APIView):
             print("Serializer not initialized")
             return Response({"detail": "Serializer not initialized."}, status=status.HTTP_400_BAD_REQUEST)
         
-        
+
+class MerchantListView(APIView):
+    def get(self, request, format=None):
+        merchants = Merchant.objects.all()
+        serializer = MerchantSerializer(merchants, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 class MerchantUpdateView(APIView):
     def patch(self, request, unique_id, format=None):
         serializer = None

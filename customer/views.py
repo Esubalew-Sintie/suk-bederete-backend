@@ -106,6 +106,12 @@ class CustomerList(APIView):
         serializer = CustomerSerializer(customers, many=True)
         return Response(serializer.data)
     
+class CustomerListView(APIView):
+    def get(self, request, format=None):
+        merchants = Customer.objects.all()
+        serializer = CustomerSerializer(merchants, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
     
 class CustomerDetail(APIView):
     def get(self, request, pk):

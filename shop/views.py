@@ -359,3 +359,21 @@ class UpdateShopPreviewImageView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         print("preview image updated failed")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def suspend_shop(request, unique_id):
+    try:
+        shop = Shop.objects.get(unique_id=unique_id)
+    except Shop.DoesNotExist:
+        return Response({'error': 'Shop not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = ShopSerializer(data=request.data)
+    if serializer.is_valid():
+        if serializer.validated_data['suspense']:
+            shop.suspend()
+        else:
+            shop.unsuspend()
+        return Response({'status': 'success'}, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

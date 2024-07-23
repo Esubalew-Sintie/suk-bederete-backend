@@ -3,6 +3,7 @@ from merchant.models import Merchant
 from builder.models import Template, Page
 from account.models import Account
 from django.apps import apps
+from django.db.models import Avg
 import uuid
 # Create your models here.
 class CustomizedTemplate(models.Model):
@@ -34,6 +35,10 @@ class Shop(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def average_rating(self):
+        average = self.ratings.aggregate(Avg('rating'))['rating__avg']
+        return average if average is not None else 0
 
     def save(self, *args, **kwargs):
         if not self.unique_id:

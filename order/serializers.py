@@ -1,9 +1,14 @@
 from rest_framework import serializers
+from io import BytesIO
+from django.core.files.base import ContentFile
+import qrcode
 from .models import Order, OrderItem, ShippingOption
-from merchant.serializer import MerchantSerializer
+from merchant.models import Merchant
+from customer.models import Customer
+from store.models import Product
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = serializers.CharField(source='product.name')
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
 
     class Meta:
         model = OrderItem
@@ -12,64 +17,62 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class ShippingOptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShippingOption
-        fields = ['name', 'cost', 'delivery_time']
+        fields = ['id', 'name', 'cost', 'delivery_time']
 
 class OrderSerializer(serializers.ModelSerializer):
-    customer = serializers.SerializerMethodField()
-    merchant = MerchantSerializer()
+    customer = serializers.PrimaryKeyRelatedField(queryset=Customer.objects.all())
+    merchant = serializers.PrimaryKeyRelatedField(queryset=Merchant.objects.all())
     order_items = OrderItemSerializer(many=True)
-    shipping_option = ShippingOptionSerializer()
-    barcode_image = serializers.ImageField(required=False, use_url=True)  # Include barcode image
+    shipping_option = serializers.PrimaryKeyRelatedField(queryset=ShippingOption.objects.all(), allow_null=True)
+    barcode_image = serializers.ImageField(required=False, use_url=True)
 
     class Meta:
         model = Order
-        fields = ['unique_id', 'customer', 'merchant', 'total_amount', 'order_status', 'order_items', 'payment_status', 'payment_method', 'shipping_option', 'order_date', 'barcode_image']
+        fields = [
+            'unique_id', 'customer', 'merchant', 'total_amount', 'order_status',
+            'payment_status', 'payment_method', 'shipping_option', 'order_items',
+            'order_date', 'barcode_image'
+        ]
 
-    def get_customer(self, obj):
-        return {
-            'email': obj.customer.user.email,
-            'first_name': obj.customer.first_name,
-            'last_name': obj.customer.last_name,
-            'address1': obj.customer.address1,
-            'address2': obj.customer.address2,
-            'zip_code': obj.customer.zip_code,
-            'city': obj.customer.city,
-            'state': obj.customer.state,
-            'country': obj.customer.country,
-            'phone_number': obj.customer.phone_number,
-        }
+    def create(self, validated_data):
+        order_items_data = validated_data.pop('order_items')
+        shipping_option = validated_data.pop('shipping_option', None)
+        
+        # Create Order instance
+        order = Order.objects.create(**validated_data, shipping_option=shipping_option)
+        
+        # Create OrderItem instances and associate them with the Order
+        order_items = []
+        for item_data in order_items_data:
+            product_id = item_data['product'].id
+            product = Product.objects.get(id=product_id)
+            order_item = OrderItem.objects.create(product=product, quantity_ordered=item_data['quantity_ordered'])
+            order_items.append(order_item)
+        
+        # Associate OrderItem instances with the Order
+        order.order_items.set(order_items)
+        
+        # Generate and save the barcode image
+        self.generate_barcode(order)
+        
+        return order
 
-    def get_merchant(self, obj):
-        return {
-            'email': obj.merchant.user.email,
-        }
+    def generate_barcode(self, order):
+        unique_id = str(order.unique_id)
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(unique_id)
+        qr.make(fit=True)
+        img = qr.make_image(fill='black', back_color='white')
 
-class OrderSerializerForMerchant(serializers.ModelSerializer):
-    customer = serializers.SerializerMethodField()
-    merchant = MerchantSerializer()
-    order_items = OrderItemSerializer(many=True)
-    shipping_option = ShippingOptionSerializer()
-    # barcode_image = serializers.ImageField(required=False, use_url=True)  # Include barcode image
+        # Save QR code to a BytesIO object
+        buffer = BytesIO()
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
 
-    class Meta:
-        model = Order
-        fields = [ 'customer', 'merchant', 'total_amount', 'order_status', 'order_items', 'payment_status', 'payment_method', 'shipping_option', 'order_date']
-
-    def get_customer(self, obj):
-        return {
-            'email': obj.customer.user.email,
-            'first_name': obj.customer.first_name,
-            'last_name': obj.customer.last_name,
-            'address1': obj.customer.address1,
-            'address2': obj.customer.address2,
-            'zip_code': obj.customer.zip_code,
-            'city': obj.customer.city,
-            'state': obj.customer.state,
-            'country': obj.customer.country,
-            'phone_number': obj.customer.phone_number,
-        }
-
-    def get_merchant(self, obj):
-        return {
-            'email': obj.merchant.user.email,
-        }
+        # Save the image to the barcode_image field
+        order.barcode_image.save(f'{unique_id}.png', ContentFile(buffer.getvalue()), save=True)

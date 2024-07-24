@@ -15,7 +15,7 @@ urlpatterns = [
     path('publishshop/', views.create_shop, name='publish_shop'),
     path('update-preview-image/<uuid:merchant_id>/', views.UpdateShopPreviewImageView.as_view(), name='update_priview_image_shop_by_merchant'),
     path('all-shops/', views.ShopListView.as_view(), name='shop-list'),
-
+     path('shops/suspend/<str:unique_id>/', views.suspend_shop, name='suspend-shop'),
 
     # path('create_shop/', views.create_shop, name='create_shop'),
     # path('getshop/<int:shop_id>/', views.get_shop, name='get_shop'),

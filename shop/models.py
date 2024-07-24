@@ -94,6 +94,14 @@ class Shop(models.Model):
             self.suspense = False
         self.save()
         return self.status, self.suspense
+    
+    def suspend(self):
+        self.suspense = True
+        self.save()
+
+    def unsuspend(self):
+        self.suspense = False
+        self.save()
 
 class ShopRating(models.Model):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='ratings')

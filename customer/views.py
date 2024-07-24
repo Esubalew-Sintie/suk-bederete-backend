@@ -8,6 +8,40 @@ from rest_framework.decorators import api_view
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 
+class CustomerUpdateView(APIView):
+    def patch(self, request, unique_id, format=None):
+        serializer = None
+                       
+        try:
+            # Check if a Merchant instance already exists for the user
+            customer = Customer.objects.get(unique_id=unique_id)
+            print("Customer found:", customer)
+            # Update the existing customer instance
+            serializer = CustomerSerializer(customer, data=request.data, partial=True)
+            print("Serializer initialized for existing customer")
+        except Customer.DoesNotExist:
+            # Create a new Merchant instance
+            print("customer does not exist, creating a new one")
+            customer = Customer(unique_id=unique_id)
+            serializer = CustomerSerializer(customer, data=request.data, partial=True)
+            print("Serializer initialized for new customer")
+        
+        if serializer:
+            print("Serializer before validation:", serializer)
+            if serializer.is_valid():
+                print("Serializer is valid")
+                serializer.save()
+                print("customer data saved")
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                print("Serializer errors:", serializer.errors)
+                # Return detailed errors in case of validation failure
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            print("Serializer not initialized")
+            return Response({"detail": "Serializer not initialized."}, status=status.HTTP_400_BAD_REQUEST)
+        
+
 @api_view(['POST'])
 def register(request):
     if request.method == 'POST':

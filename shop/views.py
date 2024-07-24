@@ -324,6 +324,19 @@ def get_shop(request, shop_id):
     serializer = CustomizedPageSerializer(pages, many=True)
     return Response(serializer.data)
 
+@api_view(['GET'])
+# @permission_classes([AllowAny])
+def get_shop_Id(request, shop_id):
+    try:
+        shop = Shop.objects.get(unique_id=shop_id)
+    except Shop.DoesNotExist:
+        return Response({"error": "Shop not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    shop.check_payment_status()  # Update status and suspense for the specific shop
+    serializer = ShopSerializer(shop, many=False)
+    print(serializer.data)
+    return Response(serializer.data)
+
 # Creating a view to verify if the given merchant_id is associated with a shop
 @api_view(['GET'])
 @permission_classes([AllowAny])

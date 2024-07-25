@@ -32,7 +32,7 @@ class Order(models.Model):
         return sum(item.product.price * item.quantity_ordered for item in self.items.all())
 
     def __str__(self):
-        return f"Order {self.id} by {self.customer.user.email} for {self.merchant.user.email}"
+        return f"Order {self.unique_id} by {self.customer.user.email} for {self.merchant.user.email}"
 
 
 class ShippingOption(models.Model):

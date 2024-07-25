@@ -121,3 +121,12 @@ def getTemplatePage(request, template_id):
     except Exception as e:
         # Handle exceptions
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#create a view that send templates with the given templte_type
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def getTemplatesByType(request, template_type):
+    templates = Template.objects.filter(template_type=template_type)
+    serializer = TemplateSerializer(instance=templates, many=True)
+    return Response(serializer.data)

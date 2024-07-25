@@ -23,51 +23,7 @@ from django.views import View
 from django.shortcuts import get_object_or_404
 from .models import Merchant
 
-class CustomerUpdateView(APIView):
-    def patch(self, request, unique_id, format=None):
-        serializer = None
-        print("Request data:", request.data)
-        uid = request.data.get('uid', None)
-        print("UID:", uid)
 
-        try:
-            if uid:
-                user = Account.objects.get(pk=uid)
-                print("User found:", user)
-               
-                try:
-                    # Check if a Merchant instance already exists for the user
-                    customer = Customer.objects.get(user=user)
-                    print("Customer found:", customer)
-                    # Update the existing customer instance
-                    serializer = CustomerSerializer(customer, data=request.data, partial=True)
-                    print("Serializer initialized for existing customer")
-                except Customer.DoesNotExist:
-                    # Create a new Merchant instance
-                    print("customer does not exist, creating a new one")
-                    customer = Customer(user=user)
-                    serializer = CustomerSerializer(customer, data=request.data, partial=True)
-                    print("Serializer initialized for new customer")
-        except Account.DoesNotExist:
-            print("User not found")
-            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        if serializer:
-            print("Serializer before validation:", serializer)
-            if serializer.is_valid():
-                print("Serializer is valid")
-                serializer.save()
-                print("customer data saved")
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            else:
-                print("Serializer errors:", serializer.errors)
-                # Return detailed errors in case of validation failure
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            print("Serializer not initialized")
-            return Response({"detail": "Serializer not initialized."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        
 class MerchantUpdateView(APIView):
     def patch(self, request, unique_id, format=None):
         serializer = None

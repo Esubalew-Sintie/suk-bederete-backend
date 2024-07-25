@@ -4,6 +4,7 @@ from builder.models import Template, Page
 from account.models import Account
 from django.apps import apps
 from django.db.models import Avg
+from category.models import ShopCategory
 import uuid
 # Create your models here.
 class CustomizedTemplate(models.Model):
@@ -30,6 +31,7 @@ class Shop(models.Model):
     preview_image = models.ImageField(upload_to="images/preview/", blank=True, null=True)
     customized_template = models.ForeignKey(CustomizedTemplate, on_delete=models.CASCADE)
     unique_id = models.CharField(max_length=255, unique=True, blank=True, editable=False)
+    category = models.ForeignKey(ShopCategory, on_delete=models.SET_NULL, null=True, blank=True)
     created_date = models.DateTimeField(auto_now_add=True)
     updated_date = models.DateTimeField(auto_now=True)
 

@@ -1,12 +1,14 @@
 from django.db import models
 from merchant.models import Merchant
-from builder.models import Template, Page
+from builder.models import Template
 from account.models import Account
 from django.apps import apps
 from django.db.models import Avg
 from category.models import ShopCategory
 import uuid
-# Create your models here.
+from datetime import timedelta
+from django.utils import timezone
+
 class CustomizedTemplate(models.Model):
     original_template = models.ForeignKey(Template, on_delete=models.CASCADE)
     modifiedby = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name='customized_templates', to_field='unique_id')
@@ -14,7 +16,7 @@ class CustomizedTemplate(models.Model):
 
     def __str__(self):
         return self.original_template.name
-    
+
 class CustomizedPage(models.Model):
     customized_template = models.ForeignKey(CustomizedTemplate, related_name='pages', on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
@@ -26,6 +28,11 @@ class CustomizedPage(models.Model):
         return f"{self.customized_template.original_template.name} - {self.name} - {self.customized_template.modifiedby.user.email}"
 
 class Shop(models.Model):
+    STATUS_CHOICES = [
+        ('paid', 'Paid'),
+        ('unpaid', 'Unpaid'),
+    ]
+
     name = models.CharField(max_length=200)
     owner = models.ForeignKey(Merchant, on_delete=models.CASCADE, to_field='unique_id')
     preview_image = models.ImageField(upload_to="images/preview/", blank=True, null=True)
@@ -34,13 +41,13 @@ class Shop(models.Model):
     category = models.ForeignKey(ShopCategory, on_delete=models.SET_NULL, null=True, blank=True)
     created_date = models.DateTimeField(auto_now_add=True)
     updated_date = models.DateTimeField(auto_now=True)
+    suspense = models.BooleanField(default=False)  # Default to False initially
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='unpaid')  # Changed default to 'unpaid'
+    next_payment_due_date = models.DateTimeField(null=True, blank=True)
+    last_payment_date = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.name
-    
-    def average_rating(self):
-        average = self.ratings.aggregate(Avg('rating'))['rating__avg']
-        return average if average is not None else 0
 
     def save(self, *args, **kwargs):
         if not self.unique_id:
@@ -54,9 +61,52 @@ class Shop(models.Model):
                 potential_unique_id = f"{self.name}-{new_uuid}"
             
             self.unique_id = potential_unique_id
+
+        # Set the last payment date to creation date if not set
+        if not self.last_payment_date:
+            self.last_payment_date = self.created_date
+
+        # Set the next payment due date to 5 minutes after the last payment date
+        if not self.next_payment_due_date:
+            self.next_payment_due_date = self.last_payment_date + timedelta(minutes=5)
+
+        # Check if the payment is due and update the status and suspense fields
+        if timezone.now() >= self.next_payment_due_date:
+            self.status = 'unpaid'
+            self.suspense = True
+        else:
+            self.status = 'paid'
+            self.suspense = False
         
         super().save(*args, **kwargs)
+
+    def make_payment(self):
+        """Mark the shop as paid for the current duration and set the next payment due date."""
+        self.last_payment_date = timezone.now()
+        self.next_payment_due_date = self.last_payment_date + timedelta(minutes=5)
+        self.status = 'paid'
+        self.suspense = False
+        self.save()
+
+    def check_payment_status(self):
+        """Check and update the payment status and suspense field dynamically."""
+        if timezone.now() >= self.next_payment_due_date:
+            self.status = 'unpaid'
+            self.suspense = True
+        else:
+            self.status = 'paid'
+            self.suspense = False
+        self.save()
+        return self.status, self.suspense
     
+    def suspend(self):
+        self.suspense = True
+        self.save()
+
+    def unsuspend(self):
+        self.suspense = False
+        self.save()
+
 class ShopRating(models.Model):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='ratings')
     user = models.ForeignKey(Account, on_delete=models.CASCADE)
@@ -69,11 +119,10 @@ class ShopRating(models.Model):
 
     def __str__(self):
         return f"{self.shop.name} - {self.user.email} - {self.rating}"
-   
+
 class Screenshot(models.Model):
     image = models.ImageField(upload_to='images/screenshots/')
     caption = models.CharField(max_length=255, blank=True)
-
 
 class Picture(models.Model):
     image = models.ImageField(upload_to='pictures/')

@@ -22,7 +22,7 @@ class CustomerUpdateView(APIView):
                
                 try:
                     # Check if a Merchant instance already exists for the user
-                    customer = Customer.objects.get(user=user)
+                    customer = Customer.objects.get(unique_id=unique_id)
                     print("Customer found:", customer)
                     # Update the existing customer instance
                     serializer = CustomerSerializer(customer, data=request.data, partial=True)
@@ -30,7 +30,7 @@ class CustomerUpdateView(APIView):
                 except Customer.DoesNotExist:
                     # Create a new Merchant instance
                     print("customer does not exist, creating a new one")
-                    customer = Customer(user=user)
+                    customer = Customer(unique_id=unique_id)
                     serializer = CustomerSerializer(customer, data=request.data, partial=True)
                     print("Serializer initialized for new customer")
         except Account.DoesNotExist:
@@ -150,6 +150,12 @@ class CustomerList(APIView):
         serializer = CustomerSerializer(customers, many=True)
         return Response(serializer.data)
     
+class CustomerListView(APIView):
+    def get(self, request, format=None):
+        customers = Customer.objects.all()
+        serializer = CustomerSerializer(customers, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
     
 class CustomerDetail(APIView):
     def get(self, request, pk):
@@ -190,4 +196,12 @@ class CustomerCreate(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+@api_view(['GET'])
+def get_customer(request, unique_id):
+    try:
+        # Fetch the Merchant instance by unique_id
+        customer = Customer.objects.get(unique_id=unique_id)
+        serializer = CustomerSerializer(customer)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Customer.DoesNotExist:
+        return Response({"error": "customer not found."}, status=status.HTTP_404_NOT_FOUND)

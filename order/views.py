@@ -10,7 +10,8 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 import json
 import qrcode
-from .serializers import OrderSerializerForMerchant
+# from .serializers import OrderSerializerForMerchant
+from rest_framework import generics
 
 from io import BytesIO
 from rest_framework import status
@@ -34,82 +35,103 @@ from.serializers import OrderSerializer
     # def get(self, request, *args, **kwargs):
     #     return self.list(request, *args, **kwargs)
 
+from rest_framework.generics import CreateAPIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.core.files.base import ContentFile
+from io import BytesIO
+import qrcode
+from .models import Order
+from .serializers import OrderSerializer
 
-class OrderCreateView(CreateAPIView):
-    queryset = Order.objects.all()
-    serializer_class = OrderSerializer
+    
 
-    def perform_create(self, serializer):
-        order = serializer.save()
+class OrderCreateView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = OrderSerializer(data=request.data)
+        if serializer.is_valid():
+            order = serializer.save()
+            return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    
+    
+# class OrderCreateView(CreateAPIView):
+#     queryset = Order.objects.all()
+#     serializer_class = OrderSerializer
 
-        # Generate QR code
-        unique_id = str(order.unique_id)
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(unique_id)
-        qr.make(fit=True)
-        img = qr.make_image(fill='black', back_color='white')
+#     def perform_create(self, serializer):
+#         order = serializer.save()
 
-        # Save QR code to a BytesIO object
-        buffer = BytesIO()
-        img.save(buffer, format='PNG')
-        buffer.seek(0)
-
-        # Save the image to the barcode_image field
-        order.barcode_image.save(f'{unique_id}.png', ContentFile(buffer.getvalue()), save=False)
-        order.save()
-
-        # Send UUID to customer via email
-        # send_mail(
-        #     'Your Order UUID',
-        #     f'Your order UUID is {unique_id}. Please use this for tracking your order.',
-        #     'from@example.com',  # Replace with your email
-        #     [order.customer.user.email],
-        #     fail_silently=False,
+#         # Generate QR code
+        # unique_id = str(order.unique_id)
+        # qr = qrcode.QRCode(
+        #     version=1,
+        #     error_correction=qrcode.constants.ERROR_CORRECT_L,
+        #     box_size=10,
+        #     border=4,
         # )
+        # qr.add_data(unique_id)
+        # qr.make(fit=True)
+        # img = qr.make_image(fill='black', back_color='white')
 
-        # Prepare order information to send to merchant (excluding UUID and barcode image)
-        order_info = {
-            'customer': {
-                'email': order.customer.user.email,
-                'first_name': order.customer.first_name,
-                'last_name': order.customer.last_name,
-                'address1': order.customer.address1,
-                'address2': order.customer.address2,
-                'zip_code': order.customer.zip_code,
-                'city': order.customer.city,
-                'state': order.customer.state,
-                'country': order.customer.country,
-                'phone_number': order.customer.phone_number,
-            },
-            'total_amount': order.total_amount,
-            'order_status': order.order_status,
-            "barcode_image": order.barcode_image,
-            'order_items': [{'product': item.product.name, 'quantity': item.quantity_ordered} for item in order.order_items.all()],
-            'payment_status': order.payment_status,
-            'payment_method': order.payment_method,
-            'shipping_option': {
-                'name': order.shipping_option.name,
-                'cost': order.shipping_option.cost,
-                'delivery_time': order.shipping_option.delivery_time.seconds // 60,
-            } if order.shipping_option else None,
-            'order_date': order.order_date.isoformat(),
-        }
+        # # Save QR code to a BytesIO object
+        # buffer = BytesIO()
+        # img.save(buffer, format='PNG')
+        # buffer.seek(0)
 
-        # Send order information to merchant via email
-        # send_mail(
-        #     'New Order Received',
-        #     json.dumps(order_info, indent=2),
-        #     'from@example.com',  # Replace with your email
-        #     [order.merchant.user.email],
-        #     fail_silently=False,
-        # )
+        # # Save the image to the barcode_image field
+        # order.barcode_image.save(f'{unique_id}.png', ContentFile(buffer.getvalue()), save=False)
+        # order.save()
 
-        return Response(order_info, status=status.HTTP_201_CREATED)
+#         # Send UUID to customer via email
+#         # send_mail(
+#         #     'Your Order UUID',
+#         #     f'Your order UUID is {unique_id}. Please use this for tracking your order.',
+#         #     'from@example.com',  # Replace with your email
+#         #     [order.customer.user.email],
+#         #     fail_silently=False,
+#         # )
+
+#         # Prepare order information to send to merchant (excluding UUID and barcode image)
+#         order_info = {
+#             'customer': {
+#                 'email': order.customer.user.email,
+#                 'first_name': order.customer.first_name,
+#                 'last_name': order.customer.last_name,
+#                 'address1': order.customer.address1,
+#                 'address2': order.customer.address2,
+#                 'zip_code': order.customer.zip_code,
+#                 'city': order.customer.city,
+#                 'state': order.customer.state,
+#                 'country': order.customer.country,
+#                 'phone_number': order.customer.phone_number,
+#             },
+#             'total_amount': order.total_amount,
+#             'order_status': order.order_status,
+#             "barcode_image": order.barcode_image,
+#             'order_items': [{'product': item.product.name, 'quantity': item.quantity_ordered} for item in order.order_items.all()],
+#             'payment_status': order.payment_status,
+#             'payment_method': order.payment_method,
+#             'shipping_option': {
+#                 'name': order.shipping_option.name,
+#                 'cost': order.shipping_option.cost,
+#                 'delivery_time': order.shipping_option.delivery_time.seconds // 60,
+#             } if order.shipping_option else None,
+#             'order_date': order.order_date.isoformat(),
+#         }
+
+#         # Send order information to merchant via email
+#         # send_mail(
+#         #     'New Order Received',
+#         #     json.dumps(order_info, indent=2),
+#         #     'from@example.com',  # Replace with your email
+#         #     [order.merchant.user.email],
+#         #     fail_silently=False,
+#         # )
+
+#         return Response(order_info, status=status.HTTP_201_CREATED)
 
 class CustomerOrdersView(APIView):
     def get(self, request, customer_id, format=None):
@@ -220,3 +242,7 @@ class OrderStreamView(View):
         response['Content-Type'] = 'text/event-stream'
         return response
 
+
+class OrderListView(generics.ListAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer

@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404
 from merchant.models import Merchant
 import logging
 from rest_framework.views import APIView
+from rest_framework import generics
+
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from.models import Screenshot
@@ -289,33 +291,53 @@ def get_customizedPages(request, merchant_id):
     serializer = CustomizedPageSerializer(pages, many=True)
     return Response(serializer.data)
    
+# Helper function to update shop statuses
+def update_shops_status(shops):
+    for shop in shops:
+        shop.check_payment_status()
 
-#get all shops
+# Get all shops
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_shops(request):
     shops = Shop.objects.all()
+    update_shops_status(shops)  # Update status and suspense for all shops
     serializer = ShopSerializer(shops, many=True)
     return Response(serializer.data)
 
-#send a customised page of a customised template associated with the given shop_id
+# Send customized pages of a customized template associated with the given shop_id
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_shop(request, shop_id):
-    print(f"Received request for Shop with ID: {shop_id}")
     try:
-        shop = get_object_or_404(Shop, unique_id=shop_id)
+        shop = Shop.objects.get(unique_id=shop_id)
     except Shop.DoesNotExist:
         return Response({"error": "Shop not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    shop.check_payment_status()  # Update status and suspense for the specific shop
     
     customized_template = shop.customized_template
     if not customized_template:
         return Response({"error": "Customized Template not found"}, status=status.HTTP_404_NOT_FOUND)
+    
     pages = CustomizedPage.objects.filter(customized_template=customized_template)
     serializer = CustomizedPageSerializer(pages, many=True)
     return Response(serializer.data)
 
-#creating a view to verify if the given merchant_id is associated with a shop
+@api_view(['GET'])
+# @permission_classes([AllowAny])
+def get_shop_Id(request, shop_id):
+    try:
+        shop = Shop.objects.get(unique_id=shop_id)
+    except Shop.DoesNotExist:
+        return Response({"error": "Shop not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    shop.check_payment_status()  # Update status and suspense for the specific shop
+    serializer = ShopSerializer(shop, many=False)
+    print(serializer.data)
+    return Response(serializer.data)
+
+# Creating a view to verify if the given merchant_id is associated with a shop
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_shop_by_merchant(request, merchant_id):
@@ -324,14 +346,13 @@ def get_shop_by_merchant(request, merchant_id):
     except Merchant.DoesNotExist:
         return Response({"error": "Merchant not found"}, status=status.HTTP_404_NOT_FOUND)
     
-    shop = Shop.objects.filter(owner=merchant)
-    
-    if not shop.exists():
+    shops = Shop.objects.filter(owner=merchant)
+    if not shops.exists():
         return Response({"error": "No shops found for this merchant"}, status=status.HTTP_404_NOT_FOUND)
     
-    serializer = ShopSerializer(shop, many=True)
+    update_shops_status(shops)  # Update status and suspense for all shops belonging to the merchant
+    serializer = ShopSerializer(shops, many=True)
     return Response(serializer.data)
-
 
 
 class UpdateShopPreviewImageView(APIView):
@@ -353,3 +374,37 @@ class UpdateShopPreviewImageView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         print("preview image updated failed")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def suspend_shop(request, unique_id):
+    try:
+        shop = Shop.objects.get(unique_id=unique_id)
+    except Shop.DoesNotExist:
+        return Response({'error': 'Shop not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = ShopSerializer(data=request.data)
+    if serializer.is_valid():
+        if serializer.validated_data['suspense']:
+            shop.suspend()
+        else:
+            shop.unsuspend()
+        return Response({'status': 'success'}, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ShopListView(generics.ListAPIView):
+    serializer_class = ShopSerializer
+
+    def get_queryset(self):
+        # Fetch all shops and prefetch related data
+        shops = Shop.objects.all().prefetch_related('owner')
+        for shop in shops:
+            shop.check_payment_status()
+            shop.save()  # Ensure the updated status is saved
+        return shops
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)

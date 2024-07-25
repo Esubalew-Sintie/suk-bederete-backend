@@ -24,6 +24,12 @@ from django.shortcuts import get_object_or_404
 from .models import Merchant
 
 
+
+class MerchantListView(APIView):
+    def get(self, request, format=None):
+        merchants = Merchant.objects.all()
+        serializer = MerchantSerializer(merchants, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 class MerchantUpdateView(APIView):
     def patch(self, request, unique_id, format=None):
         serializer = None
@@ -83,6 +89,7 @@ def register(request):
             user = Account.objects.create_user(email=email, password=password, role=role, is_active=True)
         else:
             # If the user already exists, ensure the role matches
+            print("user already exists")
             if user.role != role:
                 return Response({"error": "User role mismatch."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -94,6 +101,7 @@ def register(request):
 
         # Check if a Merchant instance is already created
         if Merchant.objects.filter(user=user).exists():
+            print("Merchant record already exists.")
             return Response({"error": "Merchant record already exists."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Create the Merchant instance
@@ -104,7 +112,7 @@ def register(request):
             'message': 'Merchant registered successfully',
             'email': email,
             'tokens': tokens,
-            'merchant': serializer.data,
+            'data': serializer.data,
         }
 
         return Response(response_data, status=status.HTTP_201_CREATED)
@@ -148,3 +156,14 @@ def login(request):
             return Response(response_data, status=status.HTTP_200_OK)
         else:
             return Response({"error": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+@api_view(['GET'])
+def get_merchant(request, unique_id):
+    try:
+        # Fetch the Merchant instance by unique_id
+        merchant = Merchant.objects.get(unique_id=unique_id)
+        serializer = MerchantSerializer(merchant)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Merchant.DoesNotExist:
+        return Response({"error": "Merchant not found."}, status=status.HTTP_404_NOT_FOUND)

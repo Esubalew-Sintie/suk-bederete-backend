@@ -1,5 +1,7 @@
 # utils/supabase_storage.py
 
+# utils/supabase_storage.py
+
 import os
 import requests
 from django.core.files.storage import Storage
@@ -22,16 +24,18 @@ class SupabaseStorage(Storage):
             'apikey': self.supabase_key,
             'Authorization': f'Bearer {self.supabase_key}',
         }
-        self.base_url = f"{self.supabase_url}/storage/v1/object/public/{self.bucket_name}"
+        self.upload_base_url = f"{self.supabase_url}/storage/v1/object/{self.bucket_name}"
+        self.public_base_url = f"{self.supabase_url}/storage/v1/object/public/{self.bucket_name}"
         
         # Debugging output
         print(f"Supabase URL: {self.supabase_url}")
         print(f"Supabase Key: {self.supabase_key}")
         print(f"Bucket Name: {self.bucket_name}")
-        print(f"Base URL: {self.base_url}")
+        print(f"Upload Base URL: {self.upload_base_url}")
+        print(f"Public Base URL: {self.public_base_url}")
 
     def _save(self, name, content):
-        path = f"{self.base_url}/{name}"
+        path = f"{self.upload_base_url}/{name}"
         mime_type, _ = mimetypes.guess_type(name)
         if mime_type is None:
             mime_type = 'application/octet-stream'  # Default if MIME type can't be determined
@@ -43,16 +47,16 @@ class SupabaseStorage(Storage):
         return name
 
     def _open(self, name, mode='rb'):
-        path = f"{self.base_url}/{name}"
+        path = f"{self.upload_base_url}/{name}"
         response = requests.get(path, headers=self.headers)
         if response.status_code != 200:
             raise Exception(f"Failed to retrieve file from Supabase: {response.content}")
         return ContentFile(response.content)
 
     def exists(self, name):
-        path = f"{self.base_url}/{name}"
+        path = f"{self.upload_base_url}/{name}"
         response = requests.head(path, headers=self.headers)
         return response.status_code == 200
 
     def url(self, name):
-        return f"{self.base_url}/{name}"
+        return f"{self.public_base_url}/{name}"

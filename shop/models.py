@@ -6,8 +6,9 @@ from django.apps import apps
 from django.db.models import Avg
 from category.models import ShopCategory
 import uuid
-from datetime import timedelta
+from datetime import timedelta, datetime
 from django.utils import timezone
+
 
 class CustomizedTemplate(models.Model):
     original_template = models.ForeignKey(Template, on_delete=models.CASCADE)
@@ -68,16 +69,26 @@ class Shop(models.Model):
 
         # Set the next payment due date to 5 minutes after the last payment date
         if not self.next_payment_due_date:
-            self.next_payment_due_date = self.last_payment_date + timedelta(minutes=5)
+            if self.last_payment_date:
+                self.next_payment_due_date = self.last_payment_date + timedelta(minutes=5)
+            else:
+        # Handle the case where last_payment_date is None, e.g., set a default value or raise an error
+                self.next_payment_due_date = datetime.now() + timedelta(minutes=5)  # Example: set to current time + 5 minutes
+        # Or you might want to raise an error or handle this case differently
+        # raise ValueError("last_payment_date is None")
 
         # Check if the payment is due and update the status and suspense fields
+        if self.next_payment_due_date and timezone.is_naive(self.next_payment_due_date):
+            self.next_payment_due_date = timezone.make_aware(self.next_payment_due_date, timezone.get_current_timezone())
+
+    # Compare timezone-aware datetimes
         if timezone.now() >= self.next_payment_due_date:
             self.status = 'unpaid'
             self.suspense = True
         else:
             self.status = 'paid'
             self.suspense = False
-        
+
         super().save(*args, **kwargs)
 
     def make_payment(self):

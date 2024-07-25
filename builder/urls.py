@@ -7,5 +7,6 @@ urlpatterns = [
     path('getTemplatePage/<int:pk>/', views.getTemplatePages, name="gettemplatepage"),
     path('getTemplatePages/<int:template_id>/', views.getTemplatePage, name="gettemplatepages"),
     path('getPage/<int:template_id>/<int:page_id>/', views.getePage, name="getepage"),
-    path('updatePageContent/<int:template_id>/<int:page_id>/', views.updatePageContent, name="updatePageContent")
+    path('updatePageContent/<int:template_id>/<int:page_id>/', views.updatePageContent, name="updatePageContent"),
+    path('templatetype/<str:template_type>/', views.getTemplatesByType, name="templatetype"),
 ]

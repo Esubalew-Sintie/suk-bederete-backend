@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from category.views import get_shop_category
 
 
 urlpatterns = [
@@ -14,9 +15,12 @@ urlpatterns = [
     path('getshopbymerchant/<uuid:merchant_id>/', views.get_shop_by_merchant, name='get_shop_by_merchant'),
     path('getshops/', views.get_shops, name='get_shops'),
     path('publishshop/', views.create_shop, name='publish_shop'),
+    path('shopCategory/', get_shop_category, name='shopCategory'),
     path('update-preview-image/<uuid:merchant_id>/', views.UpdateShopPreviewImageView.as_view(), name='update_priview_image_shop_by_merchant'),
     path('all-shops/', views.ShopListView.as_view(), name='shop-list'),
-     path('shops/suspend/<str:unique_id>/', views.suspend_shop, name='suspend-shop'),
+    path('shops/suspend/<str:unique_id>/', views.suspend_shop, name='suspend-shop'),
+
+    
 
     # path('create_shop/', views.create_shop, name='create_shop'),
     # path('getshop/<int:shop_id>/', views.get_shop, name='get_shop'),

@@ -11,21 +11,32 @@ from rest_framework_simplejwt.tokens import RefreshToken
 class CustomerUpdateView(APIView):
     def patch(self, request, unique_id, format=None):
         serializer = None
-                       
+        print("Request data:", request.data)
+        uid = request.data.get('uid', None)
+        print("UID:", uid)
+
         try:
-            # Check if a Merchant instance already exists for the user
-            customer = Customer.objects.get(unique_id=unique_id)
-            print("Customer found:", customer)
-            # Update the existing customer instance
-            serializer = CustomerSerializer(customer, data=request.data, partial=True)
-            print("Serializer initialized for existing customer")
-        except Customer.DoesNotExist:
-            # Create a new Merchant instance
-            print("customer does not exist, creating a new one")
-            customer = Customer(unique_id=unique_id)
-            serializer = CustomerSerializer(customer, data=request.data, partial=True)
-            print("Serializer initialized for new customer")
-        
+            if uid:
+                user = Account.objects.get(pk=uid)
+                print("User found:", user)
+               
+                try:
+                    # Check if a Merchant instance already exists for the user
+                    customer = Customer.objects.get(unique_id=unique_id)
+                    print("Customer found:", customer)
+                    # Update the existing customer instance
+                    serializer = CustomerSerializer(customer, data=request.data, partial=True)
+                    print("Serializer initialized for existing customer")
+                except Customer.DoesNotExist:
+                    # Create a new Merchant instance
+                    print("customer does not exist, creating a new one")
+                    customer = Customer(unique_id=unique_id)
+                    serializer = CustomerSerializer(customer, data=request.data, partial=True)
+                    print("Serializer initialized for new customer")
+        except Account.DoesNotExist:
+            print("User not found")
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
         if serializer:
             print("Serializer before validation:", serializer)
             if serializer.is_valid():
@@ -40,7 +51,6 @@ class CustomerUpdateView(APIView):
         else:
             print("Serializer not initialized")
             return Response({"detail": "Serializer not initialized."}, status=status.HTTP_400_BAD_REQUEST)
-        
 
 @api_view(['POST'])
 def register(request):

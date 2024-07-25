@@ -2,6 +2,9 @@ from django.db import models
 from merchant.models import Merchant
 from builder.models import Template
 from account.models import Account
+from django.apps import apps
+from django.db.models import Avg
+from category.models import ShopCategory
 import uuid
 from datetime import timedelta
 from django.utils import timezone
@@ -35,6 +38,7 @@ class Shop(models.Model):
     preview_image = models.ImageField(upload_to="images/preview/", blank=True, null=True)
     customized_template = models.ForeignKey(CustomizedTemplate, on_delete=models.CASCADE)
     unique_id = models.CharField(max_length=255, unique=True, blank=True, editable=False)
+    category = models.ForeignKey(ShopCategory, on_delete=models.SET_NULL, null=True, blank=True)
     created_date = models.DateTimeField(auto_now_add=True)
     updated_date = models.DateTimeField(auto_now=True)
     suspense = models.BooleanField(default=False)  # Default to False initially

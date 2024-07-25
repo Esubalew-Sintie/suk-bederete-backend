@@ -170,23 +170,23 @@ DEFAULT_FROM_EMAIL = 'esubalewsintie28@gmail.com'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-#         'NAME': 'postgres',
-#         'USER': 'postgres.isecqywtiwzstvxppsbd',
-#         'PASSWORD': 'DvTpr8UbsdX8YWs',
-#         'HOST': 'aws-0-us-east-1.pooler.supabase.com',
-#         'PORT': '5432',
-#     }
-# }
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'postgres',
+        'USER': 'postgres.isecqywtiwzstvxppsbd',
+        'PASSWORD': 'DvTpr8UbsdX8YWs',
+        'HOST': 'aws-0-us-east-1.pooler.supabase.com',
+        'PORT': '5432',
     }
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
 
 
 # Password validation
@@ -231,8 +231,15 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-MEDIA_URL = 'Suk_bederete/media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Supabase settings
+SUPABASE_URL = 'https://isecqywtiwzstvxppsbd.supabase.co'
+SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzZWNxeXd0aXd6c3R2eHBwc2JkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTYwNDk3MjYsImV4cCI6MjAzMTYyNTcyNn0.KjLTuCxARp-o1zTVNWXYi5JBDOnINxKBoaQxhXb5KoY'
+SUPABASE_BUCKET_NAME = 'media'
+
+DEFAULT_FILE_STORAGE = 'utils.supabase_storage.SupabaseStorage'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
